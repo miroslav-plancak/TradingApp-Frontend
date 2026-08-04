@@ -1,0 +1,316 @@
+:host {
+  display: block;
+  max-width: 84rem;
+}
+
+.page-header {
+  margin-bottom: 1.5rem;
+
+  h1 {
+    font: var(--mat-sys-headline-small);
+    margin: 0;
+  }
+}
+
+.subtitle {
+  margin: 0.375rem 0 0;
+  max-width: 60rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.source-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.875rem 0 0;
+  padding: 0.625rem 0.875rem;
+  max-width: 60rem;
+  border-left: 3px solid var(--mat-sys-primary);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-low);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.deployment-card {
+  margin-bottom: 1.75rem;
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font: var(--mat-sys-title-medium);
+  }
+
+  p {
+    margin: 0;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-medium);
+  }
+}
+
+.section {
+  margin-bottom: 2rem;
+
+  h2 {
+    margin: 0 0 0.875rem;
+    font: var(--mat-sys-title-large);
+  }
+
+  > p {
+    margin: 0 0 0.75rem;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-medium);
+  }
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(26rem, 1fr));
+  gap: 0 2rem;
+  align-items: start;
+}
+
+// ------------------------------------------------------------------ pipeline
+
+.pipeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stage {
+  position: relative;
+  padding-left: 1.75rem;
+  padding-bottom: 1rem;
+
+  // The connector line down the left, drawn between stages.
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0.3125rem;
+    top: 1.5rem;
+    bottom: -0.25rem;
+    width: 2px;
+    background: var(--mat-sys-outline-variant);
+  }
+
+  &:last-child::before {
+    display: none;
+  }
+
+  // The node dot.
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.5rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    background: var(--mat-sys-primary);
+  }
+}
+
+.stage-body {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.stage-name {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  overflow-wrap: anywhere;
+}
+
+.stage-kind {
+  margin: 0.125rem 0 0.5rem;
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-label-small);
+}
+
+.stage-detail {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.fan-out {
+  margin: 0.625rem 0 0;
+  padding-left: 1.125rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.8125rem;
+
+  li + li {
+    margin-top: 0.25rem;
+  }
+}
+
+.dlq-heading {
+  margin: 1.25rem 0 0.875rem;
+  font: var(--mat-sys-title-medium);
+}
+
+.dlq .stage::after {
+  background: var(--mat-sys-error);
+}
+
+// ----------------------------------------------------------------- lifecycle
+
+.lifecycle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.1875rem 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 1rem;
+  font: var(--mat-sys-label-medium);
+}
+
+.status-pending {
+  color: var(--mat-sys-tertiary);
+}
+
+.status-ack {
+  color: var(--mat-sys-primary);
+}
+
+.status-filled {
+  color: #4ade80;
+}
+
+.status-rejected {
+  color: var(--mat-sys-error);
+}
+
+.arrow {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-left: 0.5rem;
+}
+
+.lifecycle-note {
+  margin: 0.75rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+// -------------------------------------------------------------------- tables
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.reference-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+
+  th,
+  td {
+    padding: 0.625rem 0.875rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  th {
+    font: var(--mat-sys-label-large);
+    color: var(--mat-sys-on-surface-variant);
+    white-space: nowrap;
+  }
+
+  td {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  td.mono {
+    color: var(--mat-sys-on-surface);
+  }
+}
+
+.stub-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.5rem;
+  border-radius: 1rem;
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-tertiary);
+  font: var(--mat-sys-label-small);
+  font-family: var(--mat-sys-body-medium-font);
+}
+
+.table-note {
+  margin: 0.75rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+// --------------------------------------------------------------------- misc
+
+.pattern-points,
+.plain-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+
+  li + li {
+    margin-top: 0.5rem;
+  }
+}
+
+.code {
+  margin: 0.75rem 0 0;
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-surface-container-highest);
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.enum-list {
+  margin: 0;
+  font: var(--mat-sys-body-medium);
+
+  dt {
+    margin-top: 0.875rem;
+    font-weight: 600;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  dd {
+    margin: 0.125rem 0 0;
+    color: var(--mat-sys-on-surface-variant);
+    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.8125rem;
+  }
+}
+
+.mono {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.875em;
+}
+
+code {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.875em;
+}

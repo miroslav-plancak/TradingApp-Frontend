@@ -1,7 +1,262 @@
-<app-page-placeholder
-  heading="Architecture"
-  phase="Phase 6"
-  icon="account_tree"
-  summary="Static reference for the event-driven pipeline behind this console: the API, the transactional outbox, the queue-triggered functions, and the tables each of them writes to."
-  [planned]="planned"
-/>
+<header class="page-header">
+  <h1>Architecture</h1>
+  <p class="subtitle">
+    What this console drives: an event-driven order processing system, ported from an
+    Azure/Service Bus original to AWS. ASP.NET Core for the API, .NET 8 Lambdas, SQS FIFO queues,
+    an SNS FIFO topic, and SQL Server.
+  </p>
+  <p class="source-note">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <span>
+      Mirrors <code>TradingApp-AWS/README.md</code>, which is the current source of truth for the
+      AWS port. Update the README first, then this page.
+    </span>
+  </p>
+</header>
+
+<mat-card appearance="outlined" class="deployment-card">
+  <mat-card-content>
+    <h2>Where things actually run</h2>
+    <p>
+      Only <strong>SQS and SNS are real cloud resources</strong>. SQL Server runs locally, and the
+      day-to-day workflow runs each Lambda locally through its own harness against those real
+      queues. There is no CloudFormation, SAM or CDK stack — queues, the topic, subscriptions,
+      redrive policies and the <code>ReportBatchItemFailures</code> flag on each event source
+      mapping are all provisioned by hand through the AWS console or CLI.
+    </p>
+  </mat-card-content>
+</mat-card>
+
+<section aria-labelledby="flow-heading" class="section">
+  <h2 id="flow-heading">Order flow</h2>
+
+  <ol class="pipeline">
+    @for (stage of pipeline; track stage.name) {
+      <li class="stage">
+        <div class="stage-body">
+          <p class="stage-name">{{ stage.name }}</p>
+          <p class="stage-kind">{{ stage.kind }}</p>
+          <p class="stage-detail">{{ stage.detail }}</p>
+
+          @if (stage.fanOut) {
+            <ul class="fan-out">
+              @for (branch of stage.fanOut; track branch) {
+                <li>{{ branch }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </li>
+    }
+  </ol>
+
+  <h3 class="dlq-heading">When a message keeps failing</h3>
+  <ol class="pipeline dlq">
+    @for (stage of dlqPath; track stage.name) {
+      <li class="stage">
+        <div class="stage-body">
+          <p class="stage-name">{{ stage.name }}</p>
+          <p class="stage-kind">{{ stage.kind }}</p>
+          <p class="stage-detail">{{ stage.detail }}</p>
+        </div>
+      </li>
+    }
+  </ol>
+</section>
+
+<section aria-labelledby="lifecycle-heading" class="section">
+  <h2 id="lifecycle-heading">Order status lifecycle</h2>
+  <div class="lifecycle">
+    <span class="status status-pending">PENDING_ACK</span>
+    <span class="arrow" aria-hidden="true">→</span>
+    <span class="status status-ack">ACKNOWLEDGED</span>
+    <span class="arrow" aria-hidden="true">→</span>
+    <span class="status status-filled">FILLED</span>
+    <span class="branch">
+      <span class="arrow" aria-hidden="true">↳</span>
+      <span class="status status-rejected">REJECTED</span>
+    </span>
+  </div>
+  <p class="lifecycle-note">
+    REJECTED is a terminal state assigned at execution time, not a failure of the pipeline — the
+    scenarios treat it as a normal outcome.
+  </p>
+</section>
+
+<section aria-labelledby="lambdas-heading" class="section">
+  <h2 id="lambdas-heading">Lambda functions</h2>
+  <div class="table-scroll">
+    <table class="reference-table">
+      <caption class="visually-hidden">
+        The eight Lambda functions, their triggers and responsibilities.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Function</th>
+          <th scope="col">Trigger</th>
+          <th scope="col">Responsibility</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (fn of lambdas; track fn.name) {
+          <tr>
+            <td class="mono">
+              {{ fn.name }}
+              @if (fn.stub) {
+                <span class="stub-badge">stub</span>
+              }
+            </td>
+            <td>{{ fn.trigger }}</td>
+            <td>{{ fn.responsibility }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="table-note">
+    Every function has a matching <code>*.LocalHarness</code> console app. The two stubs have no
+    real logic or persistence yet, so redelivery is harmless there today — but not because of any
+    idempotency guard.
+  </p>
+</section>
+
+<section aria-labelledby="patterns-heading" class="section">
+  <h2 id="patterns-heading">Reliability patterns</h2>
+  <mat-accordion multi>
+    @for (pattern of patterns; track pattern.title) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ pattern.title }}</mat-panel-title>
+          <mat-panel-description>{{ pattern.summary }}</mat-panel-description>
+        </mat-expansion-panel-header>
+        <ul class="pattern-points">
+          @for (point of pattern.points; track point) {
+            <li>{{ point }}</li>
+          }
+        </ul>
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+</section>
+
+<div class="two-column">
+  <section aria-labelledby="tables-heading" class="section">
+    <h2 id="tables-heading">Database tables</h2>
+    <div class="table-scroll">
+      <table class="reference-table">
+        <caption class="visually-hidden">The seven SQL Server tables and their purpose.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Table</th>
+            <th scope="col">Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (table of tables; track table.name) {
+            <tr>
+              <td class="mono">{{ table.name }}</td>
+              <td>{{ table.purpose }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">
+      Every table except the two notification-tracking ones carries a <code>CorrelationId</code>
+      and a <code>ClaimedBy</code>/<code>ClaimedAt</code> pair.
+    </p>
+  </section>
+
+  <section aria-labelledby="resources-heading" class="section">
+    <h2 id="resources-heading">AWS resources</h2>
+    <div class="table-scroll">
+      <table class="reference-table">
+        <caption class="visually-hidden">The SQS queues and SNS topic, all FIFO.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Resource</th>
+            <th scope="col">Type</th>
+            <th scope="col">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (resource of awsResources; track resource.name) {
+            <tr>
+              <td class="mono">{{ resource.name }}</td>
+              <td>{{ resource.type }}</td>
+              <td>{{ resource.notes }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">All six are FIFO.</p>
+  </section>
+</div>
+
+<div class="two-column">
+  <section aria-labelledby="harness-heading" class="section">
+    <h2 id="harness-heading">Local development harnesses</h2>
+    <p>
+      Every Lambda has a paired <code>*.LocalHarness</code> console app, so it runs and debugs
+      locally against the real cloud SQS/SNS resources and a local SQL Server. A full cloud deploy
+      is only needed to verify the deployed artifact, never for routine work.
+    </p>
+    <ul class="plain-list">
+      <li>
+        <strong><code>SqsHarness.RunAsync</code></strong> — for the five SQS-triggered Lambdas.
+        Polls the real queue, converts each message to an <code>SQSEvent</code>, invokes the
+        handler, and deletes on success or leaves it for real SQS retry semantics on failure.
+      </li>
+      <li>
+        <strong><code>ScheduledHarness.RunAsync</code></strong> — for the three scheduler-triggered
+        Lambdas. A deliberately simpler loop: call the handler, log, wait a minute.
+      </li>
+    </ul>
+    <p>
+      Each harness builds its DI container from the <em>same</em>&nbsp;<code>Startup.ConfigureServices</code>
+      the deployed Lambda uses and resolves the real class, so it never duplicates a Lambda's
+      constructor shape or registrations.
+    </p>
+    <pre class="code">cd Functions/OrderExecutionProcessor.LocalHarness
+dotnet run</pre>
+  </section>
+
+  <section aria-labelledby="tracing-heading" class="section">
+    <h2 id="tracing-heading">Distributed tracing</h2>
+    <p>
+      There is no Application Insights on AWS — it was removed outright rather than replaced.
+      Correlation flows through the pipeline instead:
+    </p>
+    <ul class="plain-list">
+      @for (line of tracing; track line) {
+        <li>{{ line }}</li>
+      }
+    </ul>
+  </section>
+</div>
+
+<div class="two-column">
+  <section aria-labelledby="contract-heading" class="section">
+    <h2 id="contract-heading">Event contract</h2>
+    <p>
+      <code>OrderPayload</code> is what travels on <code>CREATE_ORDER_QUEUE.fifo</code>;
+      <code>OrderStatusEvent</code> is used exclusively for <code>order_events_topic.fifo</code>.
+    </p>
+    <pre class="code">{{ eventContract }}</pre>
+  </section>
+
+  <section aria-labelledby="enums-heading" class="section">
+    <h2 id="enums-heading">Enum reference</h2>
+    <p>
+      These are the values this console displays. <code>OrderStatus</code> crosses the wire as the
+      name; <code>DeadLetterCategory</code> crosses as the number.
+    </p>
+    <dl class="enum-list">
+      @for (enumEntry of enums; track enumEntry.name) {
+        <dt class="mono">{{ enumEntry.name }}</dt>
+        <dd>{{ enumEntry.values }}</dd>
+      }
+    </dl>
+  </section>
+</div>

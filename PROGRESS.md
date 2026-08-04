@@ -4,7 +4,7 @@ Resumable checkpoint for the Angular/ngRx port described in `AGENT_BRIEF.md`.
 **Read `AGENT_BRIEF.md` first** — it holds the API surface, the DTO table, and the scope decisions.
 This file records only what has actually been built and what to do next.
 
-Last updated: 2026-08-04 (end of Phase 5).
+Last updated: 2026-08-04 — **all six phases complete**.
 
 ---
 
@@ -17,7 +17,7 @@ Last updated: 2026-08-04 (end of Phase 5).
 | 3 | Outbox feature | **Done** |
 | 4 | Dead Letter feature | **Done** |
 | 5 | Scenarios feature | **Done** |
-| 6 | Architecture/About page | Not started |
+| 6 | Architecture/About page | **Done** |
 
 ---
 
@@ -250,6 +250,28 @@ Other decisions:
 
 ---
 
+## What Phase 6 delivered
+
+Static reference page, no state and no HTTP. Content is transcribed from **`TradingApp-AWS/README.md`**,
+which was rewritten for the AWS port — deliberately *not* from the original console's architecture
+tab, which still described the Azure/Service Bus original, and not re-derived from `Functions/*`.
+
+`architecture.model.ts` holds the content as typed data; `architecture.html` renders it. Sections:
+where things actually run (only SQS/SNS are cloud, SQL Server is local, no IaC), the order flow as a
+connected pipeline, the DLQ path, the status lifecycle, the eight Lambdas (stubs badged), the eight
+reliability patterns in an accordion, the seven tables, the AWS resources, the local harness
+workflow, distributed tracing, the event contract, and the enum reference.
+
+**When the backend changes, update the README first and mirror it here.** That ordering is the whole
+point of sourcing it this way.
+
+One config change: the `anyComponentStyle` budget went from 4 kB to 6 kB. This page's stylesheet is
+4.6 kB — large for a component, reasonable for the app's only long-form document. Note that `.mono`
+and the monospace `code` rule are now duplicated across several feature stylesheets; hoisting them
+into `styles.scss` is the obvious cleanup if anyone touches this area again.
+
+---
+
 ## Open questions carried into later phases
 
 1. ~~**`DeadLetterCategory` wire format.**~~ **CLOSED in Phase 4, confirmed against the live API.**
@@ -290,7 +312,7 @@ Other decisions:
 
 ---
 
-## Conventions the later phases must follow
+## Conventions (followed throughout; keep to them for any further work)
 
 - **Components**: standalone, `inject()` for DI, `@if`/`@for` control flow (never `*ngIf`/`*ngFor`),
   `ChangeDetectionStrategy.OnPush`, signal `input()`/`output()`.
@@ -319,24 +341,28 @@ Other decisions:
 
 ---
 
-## Next step — Phase 6 (Architecture), the last one
+## The brief is complete — what someone might pick up next
 
-Static content, no state, no HTTP — the smallest phase. Port the original console's
-`tab-architecture` markup (roughly `TradingAppUI.html:1490–1700`): the component reference (API,
-functions, queues, topics, tables), the event-flow walkthrough, and the notes on what writes where.
+Nothing outstanding from `AGENT_BRIEF.md`. Every feature of the original console is carried over.
+Ideas, in rough order of value:
 
-1. It is a **content** problem, not an engineering one. Prose and structure carry it; there is no
-   slice and nothing to poll.
-2. Keep the `PagePlaceholder` component — nothing else uses it after this, but it costs nothing and
-   is the obvious tool if a seventh page ever appears. Just drop its usage from `architecture.html`.
-3. Names in the original are authoritative — `OrderExecutionProcessor`,
-   `ScheduledOutboxMessageProcessor`, `DeadLetterQueueProcessor`, `create_order_queue`,
-   `order_events_topic`, `QuarantinedOutboxMessages`, `UnpublishedTopicMessages`. Cross-check them
-   against `TradingApp-AWS/Functions/*` rather than trusting the HTML, since the backend has moved to
-   AWS since that page was written and some Azure-era names may now be wrong.
-4. That last point is the one thing worth real attention: the architecture page is documentation, and
-   documentation that describes the wrong infrastructure is worse than none. Flag anything that no
-   longer matches instead of copying it over.
+1. **SignalR**, the seam the whole build was structured around. Replace each feature's `poll*$`
+   effect with a hub subscription that dispatches the same `load*` action. Reducers, selectors and
+   components need no changes — that was the point. The companion `SignalR_and_RealTime.html` doc in
+   the sibling `fis learning` folder is the intended starting material.
+2. **`PagePlaceholder` is now unused.** It was scaffolding for phases 2–6. Delete it, or keep it for
+   a future seventh page — but do not leave it undecided indefinitely.
+3. **Hoist the duplicated `.mono` / monospace `code` rules** out of the feature stylesheets into
+   `styles.scss`. Five components define the same rule; that is also what pushed the architecture
+   page over the old component-style budget.
+4. **No component tests for the tables and forms.** Coverage today is reducers, selectors, HTTP
+   contracts, the scenario runners, and the polling-stops-on-destroy behaviour. The presentational
+   components are verified by eye, not by test.
+5. **The accessibility bar has not been audited with a tool.** The code follows the rules in
+   `.claude/CLAUDE.md` — live regions, table captions, labelled controls, focus handling in dialogs,
+   never colour alone — but nobody has run AXE over it.
+6. **Deployment.** The brief mentions S3 + CloudFront; there is no pipeline, no `Dockerfile`, and no
+   CI in this repo yet.
 
 ---
 
