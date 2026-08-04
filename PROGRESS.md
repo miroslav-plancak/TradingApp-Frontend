@@ -4,7 +4,7 @@ Resumable checkpoint for the Angular/ngRx port described in `AGENT_BRIEF.md`.
 **Read `AGENT_BRIEF.md` first** — it holds the API surface, the DTO table, and the scope decisions.
 This file records only what has actually been built and what to do next.
 
-Last updated: 2026-08-04 (end of Phase 2).
+Last updated: 2026-08-04 (end of Phase 3).
 
 ---
 
@@ -14,7 +14,7 @@ Last updated: 2026-08-04 (end of Phase 2).
 |---|---|---|
 | 1 | Repo + scaffold | **Done** |
 | 2 | Orders feature (reference vertical slice) | **Done** |
-| 3 | Outbox feature | Not started |
+| 3 | Outbox feature | **Done** |
 | 4 | Dead Letter feature | Not started |
 | 5 | Scenarios feature | Not started |
 | 6 | Architecture/About page | Not started |
@@ -151,6 +151,38 @@ Also added in `core/` and `shared/`, reusable by every later phase:
 
 ---
 
+## What Phase 3 delivered
+
+`features/outbox/` follows `features/orders/` file for file — same container/presentational split, same
+store layout, same effect shapes. Only the differences are worth reading:
+
+- **The filter is state, not three action families.** `filter: 'all' | 'unprocessed' | 'processed'`
+  lives in the slice; `OutboxApiService.list(filter)` maps it onto the three endpoints, and
+  `filterChanged` clears the rows immediately so the previous filter's messages can't sit under the
+  new filter's heading while the request is in flight.
+- **List and stats load as one unit.** `loadOutbox` fans out to `/outboxmessage[...]` and
+  `/stats` via `forkJoin`, landing in a single `loadOutboxSuccess({ messages, stats })`. They fail
+  together on purpose: a page showing half the truth is worse than one showing an error. Note the
+  stats are **global** while the table is filtered, so they will legitimately disagree.
+- **`reloadAfterMutation$`** re-runs the load after mark-processed, delete, and delete-all, because
+  `/stats` counts every message and the reducer cannot recompute it from the filtered rows.
+- **Flattening operators match Phase 2 exactly** — `switchMap` for loads and lookup, `mergeMap` for
+  the per-row actions (mark-processed, delete), `exhaustMap` for delete-all.
+- **`markProcessedSuccess` removes the row when the filter is `unprocessed`**, since the message no
+  longer belongs in that view.
+- **Payload rendering** goes through the new `shared/json-viewer-dialog/`, which pretty-prints
+  best-effort and falls back to the raw string with a warning when it will not parse — Phase 4
+  reuses it verbatim for `DeadLetterLogResponse.messageBody`.
+- **`retryCount >= 5`** (the processor's quarantine threshold, exported as
+  `QUARANTINE_RETRY_THRESHOLD`) renders as a filled error chip, plus a banner above the table. That
+  banner counts **loaded rows only** — there is no server-side stat for retry counts — and its
+  wording says so.
+- Mark-processed is behind a confirmation, because it tells the pipeline a message was dispatched
+  when it was not.
+- The original tab's static "How Outbox Works" note is carried over as a card.
+
+---
+
 ## Open questions carried into later phases
 
 1. **`DeadLetterCategory` wire format — verified statically, not at runtime.** The brief asked for a
@@ -176,6 +208,13 @@ Also added in `core/` and `shared/`, reusable by every later phase:
 4. **CORS is fine.** `Program.cs` registers an `AllowAll` policy (`AllowAnyOrigin/Method/Header`),
    so `localhost:4200` needs no proxy. The dev certificate still has to be accepted once in the
    browser, or every request fails as status 0.
+5. **Bug in the *old* console, for the record — not ported.** `TradingAppUI.html:2189`
+   (`markOutboxProcessed`) builds its path with backslashes:
+   `'\api\outboxmessage\' + id + '\mark-processed'`. In JavaScript `\a`, `\o` and `\m` are just
+   those letters, so the request goes to a garbage relative path and mark-processed has been broken
+   in the original UI. Nothing to fix in this repo — the port builds the path correctly — but worth
+   knowing if anyone compares behaviour against the old console. The backend endpoint itself is
+   fine.
 
 ---
 
@@ -208,25 +247,25 @@ Also added in `core/` and `shared/`, reusable by every later phase:
 
 ---
 
-## Next step — Phase 3 (Outbox)
+## Next step — Phase 4 (Dead Letter)
 
-Copy `features/orders/` wholesale and adapt. The differences from Orders:
+Closest to Outbox: filtered list (`all` / `unresolved`), a `/stats` endpoint loaded alongside it,
+per-row actions, and a JSON body to inspect. Copy `features/outbox/` and adapt.
 
-1. **Endpoints** (`OutboxMessageController`): list, `/unprocessed`, `/processed`, `/stats`,
-   `/{id}`, `POST /{id}/mark-processed`, `DELETE /{id}`, `DELETE` all. Note there is **no create**.
-2. **A filter dimension Orders does not have**: all / unprocessed / processed. Keep it in the slice
-   as a `filter` field and have the load effect pick the endpoint from it — do not create three
-   parallel action families.
-3. **A real stats endpoint**: `OutboxMessageStatsDTO` replaces the derived status tiles. Load it
-   alongside the list (the same `loadOutbox` action can fan out to both requests) so polling keeps
-   the stats fresh too.
-4. **Payload display**: `payload` is a JSON *string*, not an object. Show it in a monospace,
-   scrollable, expandable cell — pretty-print with `JSON.parse` guarded by try/catch, since a
-   malformed payload is exactly the sort of thing an operator is looking for.
-5. `retryCount` deserves visual weight — it is the signal that something is stuck.
+1. **Re-verify `DeadLetterCategory` on the wire before writing any of it** — see open question 1.
+   One real response settles whether the model stays a numeric enum.
+2. **Endpoints** (`DeadLetterController`): list, `/unresolved`, `/{id}`, `POST /{id}/resolve`,
+   `/stats`, `/by-client-order/{clientOrderId}`, `POST` create, `DELETE /{id}`, `DELETE` all.
+3. **Two lookups, not one**: by id *and* by client order id. They are separate endpoints returning
+   the same DTO — one lookup slot in state with an action per endpoint is enough.
+4. **Resolve dialog**: `ResolveDeadLetterRequestDTO` is `{ resolutionNotes, resolvedBy }` — a real
+   form in a dialog, not a bare confirm. `exhaustMap`, like create in Orders.
+5. **Manual inject form**: `CreateDeadLetterRequestDTO` needs `clientOrderId`, `messageBody`,
+   `reason`, `category`, `correlationId`. It exists to generate test data, so default the GUIDs to
+   freshly generated ones rather than making the operator invent them.
+6. **`messageBody`** renders through `shared/json-viewer-dialog/` exactly as outbox payloads do.
 
-Then Phase 4 (Dead Letter), which adds the resolve dialog and the manual-inject form, and must
-re-verify the `DeadLetterCategory` wire format first.
+Then Phase 5 (Scenarios) and Phase 6 (Architecture).
 
 ---
 

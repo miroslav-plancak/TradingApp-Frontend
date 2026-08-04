@@ -1,0 +1,94 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>Message detail</mat-card-title>
+    <mat-card-subtitle>GET /api/outboxmessage/{{ '{id}' }}</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="lookup-form">
+      <mat-form-field appearance="outline">
+        <mat-label>Message id</mat-label>
+        <input
+          matInput
+          formControlName="id"
+          placeholder="00000000-0000-0000-0000-000000000000"
+          spellcheck="false"
+          autocomplete="off"
+          required
+        />
+        @if (form.controls.id.hasError('required')) {
+          <mat-error>A message id is required.</mat-error>
+        } @else if (form.controls.id.hasError('pattern')) {
+          <mat-error>That is not a valid GUID.</mat-error>
+        }
+      </mat-form-field>
+
+      <button matButton="filled" type="submit" [disabled]="pending()">
+        <mat-icon>{{ pending() ? 'hourglass_top' : 'search' }}</mat-icon>
+        {{ pending() ? 'Fetching…' : 'Fetch' }}
+      </button>
+
+      <button matButton type="button" (click)="onClear()">Clear</button>
+    </form>
+
+    <div class="lookup-result" aria-live="polite">
+      @if (error()) {
+        <p class="lookup-error">
+          <mat-icon aria-hidden="true">error_outline</mat-icon>
+          {{ error() }}
+        </p>
+      } @else if (result(); as message) {
+        <dl class="detail-grid">
+          <dt>State</dt>
+          <dd>
+            <span class="chip" [class.chip-processed]="message.isProcessed">
+              {{ message.isProcessed ? 'PROCESSED' : 'PENDING' }}
+            </span>
+          </dd>
+
+          <dt>Type</dt>
+          <dd>{{ message.type || 'OutboxMessage' }}</dd>
+
+          <dt>Retries</dt>
+          <dd>{{ message.retryCount }}</dd>
+
+          <dt>Created</dt>
+          <dd>{{ message.createdAt | date: 'medium' }}</dd>
+
+          <dt>Processed at</dt>
+          <dd>{{ message.processedAt ? (message.processedAt | date: 'medium') : '—' }}</dd>
+        </dl>
+
+        <div class="detail-actions">
+          <button matButton type="button" (click)="payloadOpened.emit(message)">
+            <mat-icon>data_object</mat-icon>
+            View payload
+          </button>
+
+          @if (!message.isProcessed) {
+            <button
+              matButton
+              type="button"
+              [disabled]="busy()"
+              (click)="markedProcessed.emit(message)"
+            >
+              <mat-icon>check_circle_outline</mat-icon>
+              Mark processed
+            </button>
+          }
+
+          <button
+            matButton
+            type="button"
+            class="destructive"
+            [disabled]="busy()"
+            (click)="deleted.emit(message)"
+          >
+            <mat-icon>delete_outline</mat-icon>
+            Delete
+          </button>
+        </div>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

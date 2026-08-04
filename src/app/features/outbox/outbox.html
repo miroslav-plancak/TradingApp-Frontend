@@ -1,7 +1,152 @@
-<app-page-placeholder
-  heading="Outbox"
-  phase="Phase 3"
-  icon="outbox"
-  summary="Watch the transactional outbox drain: list all / unprocessed / processed messages, inspect payloads and retry counts, mark processed, and read the stats summary."
-  [planned]="planned"
-/>
+<header class="page-header">
+  <div>
+    <h1>Outbox</h1>
+    <p class="subtitle">
+      Transactional outbox — persisted intents awaiting dispatch by
+      <code>ScheduledOutboxMessageProcessor</code>
+    </p>
+  </div>
+
+  <div class="page-actions">
+    <button
+      matButton="outlined"
+      type="button"
+      [disabled]="loading()"
+      matTooltip="Reload the list and stats now"
+      (click)="refresh()"
+    >
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+
+    <mat-slide-toggle
+      [checked]="autoRefresh()"
+      (change)="toggleAutoRefresh($event.checked)"
+      [matTooltip]="'Reload every ' + pollSeconds + ' seconds'"
+    >
+      Auto {{ pollSeconds }}s
+    </mat-slide-toggle>
+
+    <button
+      matButton="outlined"
+      type="button"
+      class="destructive"
+      [disabled]="messageCount() === 0"
+      (click)="deleteAll()"
+    >
+      <mat-icon>delete_sweep</mat-icon>
+      Delete all
+    </button>
+  </div>
+</header>
+
+<div class="visually-hidden" role="status" aria-live="polite">{{ liveSummary() }}</div>
+
+<app-outbox-stats [stats]="stats()" />
+
+@if (stuckCount() > 0) {
+  <!-- Scoped to the rows currently loaded, not the whole outbox: there is no
+       server-side stat for retry counts, so this cannot be a global figure. -->
+  <p class="stuck-warning">
+    <mat-icon aria-hidden="true">warning</mat-icon>
+    {{ stuckCount() }} of the messages shown {{ stuckCount() === 1 ? 'is' : 'are' }} at or past the
+    quarantine retry threshold.
+  </p>
+}
+
+<div class="content-grid">
+  <mat-card appearance="outlined" class="list-card">
+    <mat-card-header>
+      <mat-card-title>Messages</mat-card-title>
+      <mat-card-subtitle>
+        GET /api/outboxmessage{{ filter() === 'all' ? '' : '/' + filter() }}
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <mat-button-toggle-group
+        class="filter-group"
+        aria-label="Filter messages"
+        [value]="filter()"
+        (change)="changeFilter($event.value)"
+      >
+        @for (option of filters; track option.value) {
+          <mat-button-toggle [value]="option.value">{{ option.label }}</mat-button-toggle>
+        }
+      </mat-button-toggle-group>
+
+      @if (error()) {
+        <p class="load-error">
+          <mat-icon aria-hidden="true">error_outline</mat-icon>
+          <span>{{ error() }}</span>
+          <button matButton type="button" (click)="refresh()">Retry</button>
+        </p>
+      }
+
+      @if (initialLoading()) {
+        <div class="centered">
+          <mat-spinner diameter="36" />
+          <p>Loading messages…</p>
+        </div>
+      } @else if (messageCount() > 0) {
+        <app-outbox-table
+          [messages]="messages()"
+          [markingIds]="markingIds()"
+          [deletingIds]="deletingIds()"
+          (payloadOpened)="viewPayload($event)"
+          (markedProcessed)="markProcessed($event)"
+          (deleted)="deleteMessage($event)"
+        />
+      } @else if (isEmpty()) {
+        <div class="centered">
+          <mat-icon class="empty-icon" aria-hidden="true">inbox</mat-icon>
+          <p>
+            No {{ filter() === 'all' ? '' : filter() + ' ' }}messages. The outbox drains as the
+            processor dispatches — create an order to put one here.
+          </p>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <div class="side-column">
+    <app-outbox-lookup
+      [pending]="lookup().pending"
+      [result]="lookup().message"
+      [error]="lookup().error"
+      [busy]="lookupBusy()"
+      (lookedUp)="lookupMessage($event)"
+      (cleared)="clearLookup()"
+      (payloadOpened)="viewPayload($event)"
+      (markedProcessed)="markProcessed($event)"
+      (deleted)="deleteMessage($event)"
+    />
+
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>How the outbox works</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <dl class="phases">
+          <dt>Quarantine</dt>
+          <dd>
+            Messages with <code>RetryCount &gt;= 5</code> move to
+            <code>QuarantinedOutboxMessages</code>.
+          </dd>
+
+          <dt>Dispatch</dt>
+          <dd>
+            Pending messages are batch-published to <code>create_order_queue</code> with classified
+            retry reasons.
+          </dd>
+
+          <dt>Auto-recover</dt>
+          <dd>
+            Once Service Bus proves healthy, transient-failure quarantined messages are resurrected
+            for one more attempt.
+          </dd>
+        </dl>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

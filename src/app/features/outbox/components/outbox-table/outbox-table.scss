@@ -1,0 +1,61 @@
+.outbox-table {
+  width: 100%;
+  background: transparent;
+
+  caption {
+    text-align: left;
+  }
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.125rem 0.625rem;
+  border-radius: 1rem;
+  border: 1px solid currentColor;
+  color: var(--mat-sys-tertiary);
+  font: var(--mat-sys-label-small);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.chip-processed {
+  color: #4ade80;
+}
+
+.mono {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.875em;
+}
+
+.numeric {
+  text-align: right;
+}
+
+th.numeric,
+td.numeric {
+  padding-right: 1.5rem;
+}
+
+.retry-none {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.retry-some {
+  color: var(--mat-sys-tertiary);
+  font-weight: 600;
+}
+
+.retry-stuck {
+  display: inline-block;
+  padding: 0.0625rem 0.5rem;
+  border-radius: 1rem;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font-weight: 600;
+}
+
+.actions-cell {
+  width: 9rem;
+  text-align: right;
+  white-space: nowrap;
+}
