@@ -14,6 +14,11 @@
   }
 }
 
+.card-heading {
+  margin: 0;
+  font: inherit;
+}
+
 .scenario-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr));

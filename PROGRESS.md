@@ -358,9 +358,25 @@ Ideas, in rough order of value:
 4. **No component tests for the tables and forms.** Coverage today is reducers, selectors, HTTP
    contracts, the scenario runners, and the polling-stops-on-destroy behaviour. The presentational
    components are verified by eye, not by test.
-5. **The accessibility bar has not been audited with a tool.** The code follows the rules in
-   `.claude/CLAUDE.md` — live regions, table captions, labelled controls, focus handling in dialogs,
-   never colour alone — but nobody has run AXE over it.
+5. ~~**The accessibility bar has not been audited with a tool.**~~ **Done — axe-core run over all
+   five pages, every dialog, the snackbar and the API-unreachable error state. Zero violations.**
+   Three real defects were found and fixed:
+   - `button-name` (critical): the toolbar's reset button is icon-only, and `mat-icon` is
+     `aria-hidden` while a tooltip only contributes a *description* — so it had no accessible name
+     at all. It now has an explicit `aria-label`. **Any icon-only button needs one; a tooltip is
+     not a substitute.**
+   - `region`: the toolbar and tab strip sat outside every landmark, because `mat-tab-nav-bar` puts
+     `role="tablist"` on the `<nav>` and destroys its navigation landmark. Both now live in a
+     `<header>`, and `<main>` wraps the tab panel instead of sitting inside it.
+   - `heading-order`: Scenarios jumped h1 → h3, since `mat-card-title` renders a plain `div`. The
+     card titles on that page now contain real `<h2>`s styled with `font: inherit`.
+
+   Colour contrast: 108 elements passed; the 21 "incomplete" results are Material's transparent
+   inputs, which axe cannot resolve a background for. Computed manually — every one clears AA, the
+   lowest being 9.87:1 (the green `#4ade80` on a card). The theme tokens all sit above 10:1.
+
+   **This was a one-off scan, not a standing guard.** `axe-core` was installed, used, and removed.
+   Wiring it into the Vitest suite would keep it honest — worth doing if this app grows.
 6. **Deployment.** The brief mentions S3 + CloudFront; there is no pipeline, no `Dockerfile`, and no
    CI in this repo yet.
 

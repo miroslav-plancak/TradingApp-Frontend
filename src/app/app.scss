@@ -4,10 +4,15 @@
   min-height: 100vh;
 }
 
+.app-header {
+  flex: none;
+}
+
 .app-toolbar {
   // `flex: none` matters: as a flex item of the column above, the toolbar would
   // otherwise shrink below its own height and clip the base-URL field.
   flex: none;
+  width: 100%;
   gap: 0.5rem;
   height: auto;
   min-height: 5rem;
@@ -59,5 +64,6 @@
 
 .app-content {
   display: block;
+  flex: 1 1 auto;
   padding: 1.5rem;
 }

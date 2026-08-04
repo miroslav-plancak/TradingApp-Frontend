@@ -1,51 +1,66 @@
-<mat-toolbar class="app-toolbar">
-  <span class="brand">
-    <mat-icon class="brand-icon">candlestick_chart</mat-icon>
-    <span class="brand-text">TradingApp <strong>Ops Console</strong></span>
-  </span>
+<!--
+  The toolbar and the tab bar sit inside a <header> so every pixel of the shell
+  lives in a landmark. `mat-tab-nav-bar` puts role="tablist" on the <nav>, which
+  removes its navigation landmark — without this wrapper the brand, the base-URL
+  field and the tab strip are all outside any region (axe: "region").
+-->
+<header class="app-header">
+  <mat-toolbar class="app-toolbar">
+    <span class="brand">
+      <mat-icon class="brand-icon">candlestick_chart</mat-icon>
+      <span class="brand-text">TradingApp <strong>Ops Console</strong></span>
+    </span>
 
-  <span class="spacer"></span>
+    <span class="spacer"></span>
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="base-url-field">
-    <mat-label>API base URL</mat-label>
-    <input
-      matInput
-      type="url"
-      spellcheck="false"
-      autocomplete="off"
-      [value]="apiConfig.baseUrl()"
-      (change)="onBaseUrlCommit($event)"
-    />
-  </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="base-url-field">
+      <mat-label>API base URL</mat-label>
+      <input
+        matInput
+        type="url"
+        spellcheck="false"
+        autocomplete="off"
+        [value]="apiConfig.baseUrl()"
+        (change)="onBaseUrlCommit($event)"
+      />
+    </mat-form-field>
 
-  <button
-    matIconButton
-    type="button"
-    [disabled]="apiConfig.isDefault()"
-    [matTooltip]="'Reset to ' + apiConfig.defaultBaseUrl"
-    (click)="apiConfig.reset()"
-  >
-    <mat-icon>restart_alt</mat-icon>
-  </button>
-</mat-toolbar>
-
-<nav mat-tab-nav-bar [tabPanel]="tabPanel" class="app-nav">
-  @for (link of navLinks; track link.path) {
-    <a
-      mat-tab-link
-      [routerLink]="link.path"
-      routerLinkActive
-      #rla="routerLinkActive"
-      [active]="rla.isActive"
+    <!--
+      Icon-only, so it needs an explicit name: `mat-icon` is aria-hidden, and a
+      tooltip only contributes a description (axe: "button-name").
+    -->
+    <button
+      matIconButton
+      type="button"
+      aria-label="Reset the API base URL to the default"
+      [disabled]="apiConfig.isDefault()"
+      [matTooltip]="'Reset to ' + apiConfig.defaultBaseUrl"
+      (click)="apiConfig.reset()"
     >
-      <mat-icon class="nav-icon">{{ link.icon }}</mat-icon>
-      {{ link.label }}
-    </a>
-  }
-</nav>
+      <mat-icon>restart_alt</mat-icon>
+    </button>
+  </mat-toolbar>
 
-<mat-tab-nav-panel #tabPanel>
-  <main class="app-content">
+  <nav mat-tab-nav-bar [tabPanel]="tabPanel" class="app-nav">
+    @for (link of navLinks; track link.path) {
+      <a
+        mat-tab-link
+        [routerLink]="link.path"
+        routerLinkActive
+        #rla="routerLinkActive"
+        [active]="rla.isActive"
+      >
+        <mat-icon class="nav-icon">{{ link.icon }}</mat-icon>
+        {{ link.label }}
+      </a>
+    }
+  </nav>
+</header>
+
+<!-- <main> wraps the tab panel rather than sitting inside it, so the panel
+     element itself is covered by the landmark too. -->
+<main class="app-content">
+  <mat-tab-nav-panel #tabPanel>
     <router-outlet />
-  </main>
-</mat-tab-nav-panel>
+  </mat-tab-nav-panel>
+</main>

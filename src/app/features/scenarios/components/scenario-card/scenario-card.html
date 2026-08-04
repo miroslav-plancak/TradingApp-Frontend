@@ -1,7 +1,9 @@
 <mat-card appearance="outlined" class="scenario-card">
   <mat-card-header>
     <div class="index" aria-hidden="true">{{ definition().index }}</div>
-    <mat-card-title>{{ definition().title }}</mat-card-title>
+    <!-- A real <h2>: mat-card-title renders a div, which leaves the page with
+         an h1 followed by h3s and no rung between (axe: "heading-order"). -->
+    <mat-card-title><h2 class="card-heading">{{ definition().title }}</h2></mat-card-title>
     <mat-card-subtitle>{{ definition().tagline }}</mat-card-subtitle>
   </mat-card-header>
 

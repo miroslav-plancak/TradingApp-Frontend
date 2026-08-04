@@ -2,6 +2,12 @@
   height: 100%;
 }
 
+// The heading carries the document outline; mat-card-title carries the looks.
+.card-heading {
+  margin: 0;
+  font: inherit;
+}
+
 .index {
   display: grid;
   place-items: center;
