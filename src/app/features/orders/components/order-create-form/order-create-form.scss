@@ -1,0 +1,22 @@
+.create-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+
+  mat-form-field {
+    flex: 1 1 8rem;
+    min-width: 8rem;
+  }
+
+  button {
+    // Nudge down so the button's centre lines up with the inputs' centre rather
+    // than their label.
+    margin-top: 0.5rem;
+  }
+}
+
+mat-spinner {
+  display: inline-block;
+  margin-right: 0.5rem;
+}

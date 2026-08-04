@@ -1,0 +1,66 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>Look up order</mat-card-title>
+    <mat-card-subtitle>GET /api/order/{{ '{orderId}' }}</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="lookup-form">
+      <mat-form-field appearance="outline">
+        <mat-label>Order id</mat-label>
+        <input
+          matInput
+          formControlName="orderId"
+          placeholder="00000000-0000-0000-0000-000000000000"
+          spellcheck="false"
+          autocomplete="off"
+          required
+        />
+        @if (form.controls.orderId.hasError('required')) {
+          <mat-error>An order id is required.</mat-error>
+        } @else if (form.controls.orderId.hasError('pattern')) {
+          <mat-error>That is not a valid GUID.</mat-error>
+        }
+      </mat-form-field>
+
+      <button matButton="filled" type="submit" [disabled]="pending()">
+        <mat-icon>{{ pending() ? 'hourglass_top' : 'search' }}</mat-icon>
+        {{ pending() ? 'Fetching…' : 'Fetch' }}
+      </button>
+
+      <button matButton type="button" (click)="onClear()">Clear</button>
+    </form>
+
+    <div class="lookup-result" aria-live="polite">
+      @if (error()) {
+        <p class="lookup-error">
+          <mat-icon aria-hidden="true">error_outline</mat-icon>
+          {{ error() }}
+        </p>
+      } @else if (result(); as order) {
+        <dl class="detail-grid">
+          <dt>Status</dt>
+          <dd><app-order-status-chip [status]="order.status" /></dd>
+
+          <dt>Client order id</dt>
+          <dd class="mono">{{ order.clientOrderId }}</dd>
+
+          <dt>Quantity</dt>
+          <dd>{{ order.quantity | number }}</dd>
+
+          <dt>Price</dt>
+          <dd>{{ order.price | number: '1.2-2' }}</dd>
+
+          <dt>Processed</dt>
+          <dd>{{ order.isProcessed ? 'Yes' : 'No' }}</dd>
+
+          <dt>Created</dt>
+          <dd>{{ order.createdAt | date: 'medium' }}</dd>
+
+          <dt>Updated</dt>
+          <dd>{{ order.updatedAt | date: 'medium' }}</dd>
+        </dl>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

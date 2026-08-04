@@ -4,7 +4,7 @@ Resumable checkpoint for the Angular/ngRx port described in `AGENT_BRIEF.md`.
 **Read `AGENT_BRIEF.md` first** — it holds the API surface, the DTO table, and the scope decisions.
 This file records only what has actually been built and what to do next.
 
-Last updated: 2026-08-04 (end of Phase 1).
+Last updated: 2026-08-04 (end of Phase 2).
 
 ---
 
@@ -13,7 +13,7 @@ Last updated: 2026-08-04 (end of Phase 1).
 | # | Phase | Status |
 |---|---|---|
 | 1 | Repo + scaffold | **Done** |
-| 2 | Orders feature (reference vertical slice) | Not started |
+| 2 | Orders feature (reference vertical slice) | **Done** |
 | 3 | Outbox feature | Not started |
 | 4 | Dead Letter feature | Not started |
 | 5 | Scenarios feature | Not started |
@@ -93,8 +93,61 @@ src/
 - **Theme**: Material 3 azure/blue via `mat.theme()` in `src/styles.scss`, with
   `color-scheme: dark` on `body` to match the original VS-Code-dark console. Porting the exact
   original visual design is still a nice-to-have, not a requirement.
-- **Verified**: `npm run build` succeeds with no warnings; `npm test` passes 2/2. `npm start` boots
+- **Verified**: `npm run build` succeeds with no warnings; `npm test` passes. `npm start` boots
   and serves.
+
+---
+
+## What Phase 2 delivered — the reference vertical slice
+
+`features/orders/` is the pattern Phases 3 and 4 copy. Read it before writing either of them.
+
+```
+features/orders/
+  orders.ts / .html / .scss     container: selects + dispatches, holds no state
+  orders.routes.ts              lazy route + provideState/provideEffects
+  orders-api.service.ts         one method per endpoint, nothing else
+  orders-api.service.spec.ts    locks verb + path + body for all five endpoints
+  orders.spec.ts                container lifecycle (load on init, stop polling on destroy)
+  store/
+    orders.actions.ts           createActionGroup
+    orders.reducer.ts           createFeature + createEntityAdapter
+    orders.selectors.ts         feature selectors + derived counts
+    orders.effects.ts           functional effects (load/create/lookup/delete/poll/notify)
+    orders.reducer.spec.ts      reducer + selector behaviour
+  components/
+    order-create-form/          reactive form, emits CreateOrderRequest
+    order-lookup/               GUID-validated id input + detail grid
+    orders-table/               MatTable, per-row delete
+```
+
+Also added in `core/` and `shared/`, reusable by every later phase:
+
+- `core/api/http-error.ts` — `toErrorMessage()`. Handles **both** backend error shapes:
+  `ExceptionHandlingMiddleware` serializes `ProblemDetails` with the default (non-web) serializer, so
+  its keys are **PascalCase** (`Detail`, `Title`), while `[ApiController]` validation errors are
+  camelCase with an `errors` map. Status 0 gets a dedicated "is the API running / cert accepted"
+  message, which is the failure operators actually hit.
+- `core/notifications/notification.service.ts` — the toast port (`MatSnackBar`). Errors are
+  `assertive` and stay 10s; successes are `polite` and stay 4s.
+- `shared/confirm-dialog/` — used by every destructive action (and by the Scenarios purge later).
+- `shared/order-status-chip/` — colour + text, never colour alone.
+- `.visually-hidden` and the snackbar variant classes in `src/styles.scss`.
+
+**Decisions worth keeping consistent:**
+
+- **Effects are functional** (`createEffect(..., { functional: true })`, registered with
+  `import * as ordersEffects`). Less boilerplate than the class form and what ngRx leads with now.
+- **Flattening operator per effect is deliberate**: `switchMap` for list loads and lookup (a newer
+  request supersedes an older one), `exhaustMap` for create and delete-all (ignore double submits),
+  `mergeMap` for single-row delete (concurrent row deletes must not cancel each other).
+- **`selectIsInitialLoading`** is `loading && count === 0`, so a 5s poll never blanks the table.
+- **Empty vs error**: the table renders when there are rows; the empty state only when a load
+  actually succeeded with none. A failed load shows an inline banner with Retry, and
+  `loadOrdersFailure` deliberately does **not** raise a snackbar — a failing poll would otherwise
+  produce a toast every 5 seconds.
+- **Create** upserts optimistically then dispatches `loadOrders` to reconcile, because the order's
+  real status is set asynchronously by the pipeline.
 
 ---
 
@@ -112,8 +165,17 @@ src/
    original HTML's field holds `https://localhost:7224` and puts `/api` in each path. This app
    follows the brief: the editable field holds the full base *including* `/api`, so service calls
    are `apiConfig.url('/order')`. Anyone pasting a URL from the old console must append `/api`.
-3. **Nothing is committed yet.** Only `AGENT_BRIEF.md` is in git history; the whole scaffold is
-   uncommitted working tree, awaiting review.
+3. **The real backend has never been reached from this app.** `TradingApp.API` cannot start on this
+   machine: `Program.cs` line 19 loads configuration from Azure Key Vault at startup and
+   `DefaultAzureCredential` fails every credential (the Azure CLI login is against a different
+   tenant — `az login --tenant d5508570-…` would be needed, and it is interactive). Phase 2 was
+   therefore verified against a throwaway Node mock of the `/api/order` contract in the session
+   scratchpad, pointed at via the console's editable base URL. Everything matching the brief's table
+   is exercised, but **the first run against the real API may still surface shape surprises** —
+   especially date formats and `DeadLetterCategory` (see item 1). Re-check when the backend runs.
+4. **CORS is fine.** `Program.cs` registers an `AllowAll` policy (`AllowAnyOrigin/Method/Header`),
+   so `localhost:4200` needs no proxy. The dev certificate still has to be accepted once in the
+   browser, or every request fails as status 0.
 
 ---
 
@@ -131,7 +193,13 @@ src/
   the same `load*` action the manual refresh button dispatches (default interval:
   `environment.pollIntervalMs`, 5000 ms — mirrors the old "Auto 5s" buttons). Reducers, selectors,
   and components must have **zero awareness of how updates arrive** — that is the seam SignalR
-  replaces later. Do not couple anything else to the trigger.
+  replaces later. Do not couple anything else to the trigger. See `pollOrders$`.
+- **Stop the timer in the container's `ngOnDestroy`.** Route-level `provideState`/`provideEffects`
+  are **not** torn down when the route is deactivated — measured in the browser: with auto-refresh
+  on, leaving `/orders` kept the API polled from the Outbox tab indefinitely. Re-entering the route
+  does *not* register the effects a second time, so the only leak is the running timer. Every
+  feature with a polling toggle must dispatch `autoRefreshToggled({ enabled: false })` on destroy;
+  `orders.spec.ts` has the regression test to copy.
 - **Scenarios (phase 5)** are not entity-shaped. Model per-scenario run state (idle/running/output
   log) as a small dedicated slice or plain component state; don't force `EntityAdapter` onto it.
 - **Backend is read-only.** Do not modify `TradingApp-AWS`. If something would be easier with a new
@@ -140,19 +208,25 @@ src/
 
 ---
 
-## Next step — Phase 2 (Orders)
+## Next step — Phase 3 (Outbox)
 
-Build the full vertical slice that Phases 3 and 4 will copy:
+Copy `features/orders/` wholesale and adapt. The differences from Orders:
 
-1. `features/orders/orders.service.ts` (or a shared `core/api/`) covering `POST /order`,
-   `GET /order`, `GET /order/{id}`, `DELETE /order/{id}`, `DELETE /order`.
-2. `features/orders/store/` — entity slice with actions/reducer/selectors/effects.
-3. Register state + effects lazily in `orders.routes.ts`.
-4. Components: order list (`MatTable`), create-order form (quantity + price), lookup-by-id,
-   delete one / delete all, auto-refresh toggle.
-5. Errors surface through `MatSnackBar` (the port of the old toast system).
-6. Replace the `PagePlaceholder` usage in `orders.html`. Keep the component itself — the other
-   unbuilt pages still use it.
+1. **Endpoints** (`OutboxMessageController`): list, `/unprocessed`, `/processed`, `/stats`,
+   `/{id}`, `POST /{id}/mark-processed`, `DELETE /{id}`, `DELETE` all. Note there is **no create**.
+2. **A filter dimension Orders does not have**: all / unprocessed / processed. Keep it in the slice
+   as a `filter` field and have the load effect pick the endpoint from it — do not create three
+   parallel action families.
+3. **A real stats endpoint**: `OutboxMessageStatsDTO` replaces the derived status tiles. Load it
+   alongside the list (the same `loadOutbox` action can fan out to both requests) so polling keeps
+   the stats fresh too.
+4. **Payload display**: `payload` is a JSON *string*, not an object. Show it in a monospace,
+   scrollable, expandable cell — pretty-print with `JSON.parse` guarded by try/catch, since a
+   malformed payload is exactly the sort of thing an operator is looking for.
+5. `retryCount` deserves visual weight — it is the signal that something is stuck.
+
+Then Phase 4 (Dead Letter), which adds the resolve dialog and the manual-inject form, and must
+re-verify the `DeadLetterCategory` wire format first.
 
 ---
 
@@ -166,4 +240,9 @@ npm test         # vitest, single run: npx ng test --watch=false
 
 The backend must be running separately: `TradingApp.API` at `https://localhost:7224`
 (a normal `app.Run()` ASP.NET Core app, not Lambda-hosted). Accept its dev certificate in the
-browser once, or requests from the console will fail silently at the network layer.
+browser once, or every request fails as status 0.
+
+**If the backend will not start** (Key Vault / `DefaultAzureCredential`, see open question 3), the
+console can be pointed at any stand-in through the toolbar's base-URL field — that field exists
+precisely for this. A minimal Node mock of the `/api/order` contract is enough to exercise the whole
+Orders slice; keep such a mock outside the repo.

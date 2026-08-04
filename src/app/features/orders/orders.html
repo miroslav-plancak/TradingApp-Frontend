@@ -1,7 +1,99 @@
-<app-page-placeholder
-  heading="Orders"
-  phase="Phase 2"
-  icon="receipt_long"
-  summary="Create orders and watch them move through the pipeline: POST /api/order, list and lookup by id, delete one or all. This is the reference vertical slice the Outbox and Dead Letter features copy."
-  [planned]="planned"
-/>
+<header class="page-header">
+  <div>
+    <h1>Orders</h1>
+    <p class="subtitle">
+      {{ orderCount() }} order{{ orderCount() === 1 ? '' : 's' }} · {{ processedCount() }} processed
+    </p>
+  </div>
+
+  <div class="page-actions">
+    <button
+      matButton="outlined"
+      type="button"
+      [disabled]="loading()"
+      matTooltip="Reload the list now"
+      (click)="refresh()"
+    >
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+
+    <mat-slide-toggle
+      [checked]="autoRefresh()"
+      (change)="toggleAutoRefresh($event.checked)"
+      [matTooltip]="'Reload every ' + pollSeconds + ' seconds'"
+    >
+      Auto {{ pollSeconds }}s
+    </mat-slide-toggle>
+
+    <button
+      matButton="outlined"
+      type="button"
+      class="destructive"
+      [disabled]="orderCount() === 0"
+      (click)="deleteAllOrders()"
+    >
+      <mat-icon>delete_sweep</mat-icon>
+      Delete all
+    </button>
+  </div>
+</header>
+
+<div class="visually-hidden" role="status" aria-live="polite">{{ liveSummary() }}</div>
+
+<section class="status-strip" aria-label="Orders by status">
+  @for (tile of statusTiles(); track tile.status) {
+    <div class="status-tile">
+      <span class="status-tile-count">{{ tile.count }}</span>
+      <span class="status-tile-label">{{ tile.label }}</span>
+    </div>
+  }
+</section>
+
+<div class="forms-row">
+  <app-order-create-form [submitting]="creating()" (created)="createOrder($event)" />
+  <app-order-lookup
+    [pending]="lookup().pending"
+    [result]="lookup().order"
+    [error]="lookup().error"
+    (lookedUp)="lookupOrder($event)"
+    (cleared)="clearLookup()"
+  />
+</div>
+
+<mat-card appearance="outlined" class="list-card">
+  <mat-card-header>
+    <mat-card-title>All orders</mat-card-title>
+    <mat-card-subtitle>GET /api/order</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (error()) {
+      <p class="load-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ error() }}</span>
+        <button matButton type="button" (click)="refresh()">Retry</button>
+      </p>
+    }
+
+    @if (initialLoading()) {
+      <div class="centered">
+        <mat-spinner diameter="36" />
+        <p>Loading orders…</p>
+      </div>
+    } @else if (orderCount() > 0) {
+      <app-orders-table
+        [orders]="orders()"
+        [deletingIds]="deletingIds()"
+        (deleted)="deleteOrder($event)"
+      />
+    } @else if (isEmpty()) {
+      <!-- Only when a load actually succeeded and returned nothing. A failed
+           load shows the banner above instead of a bare table header. -->
+      <div class="centered">
+        <mat-icon class="empty-icon" aria-hidden="true">inbox</mat-icon>
+        <p>No orders yet. Create one above to push a message through the pipeline.</p>
+      </div>
+    }
+  </mat-card-content>
+</mat-card>
