@@ -4,7 +4,7 @@ Resumable checkpoint for the Angular/ngRx port described in `AGENT_BRIEF.md`.
 **Read `AGENT_BRIEF.md` first** — it holds the API surface, the DTO table, and the scope decisions.
 This file records only what has actually been built and what to do next.
 
-Last updated: 2026-08-04 (end of Phase 4).
+Last updated: 2026-08-04 (end of Phase 5).
 
 ---
 
@@ -16,7 +16,7 @@ Last updated: 2026-08-04 (end of Phase 4).
 | 2 | Orders feature (reference vertical slice) | **Done** |
 | 3 | Outbox feature | **Done** |
 | 4 | Dead Letter feature | **Done** |
-| 5 | Scenarios feature | Not started |
+| 5 | Scenarios feature | **Done** |
 | 6 | Architecture/About page | Not started |
 
 ---
@@ -208,6 +208,48 @@ What is specific to it:
 
 ---
 
+## What Phase 5 delivered
+
+The only feature with **no ngRx slice**. A scenario run is a page-local, long-running process with an
+append-only log — not shared application state — and it reads far better as sequential `async`/`await`
+than as a chain of effects. State lives in two component-provided services:
+
+- `scenario-runner.service.ts` — one `signal` holding a record of `ScenarioRun` (status, lines,
+  timings), plus the six scripted sequences. It composes `OrdersApiService`, `OutboxApiService` and
+  `DeadLetterApiService`; it issues no HTTP of its own.
+- `burst-runner.service.ts` — the paced load generator with sent/success/failed counters and a
+  live req/s figure.
+
+Both are provided on the `Scenarios` component, so leaving the page destroys them — and their
+`ngOnDestroy` **cancels anything in flight**, the same rule as the poll timers. Verified in the
+browser: starting the idempotency probe and navigating away produced zero further requests.
+
+Two bugs found and fixed during verification, both worth knowing about:
+
+1. **`runFor(id)` built a new `computed` on every call.** It is called from the template, so every
+   change-detection pass allocated a fresh signal node subscribed to the runs signal. With a run
+   appending log lines several times a second the renderer wedged — screenshots timed out and cards
+   rendered blank. Fixed by building one stable computed per scenario up front. **If you add a
+   per-item signal accessor called from a template, memoize it.**
+2. **Waits counted timer ticks, not wall-clock.** `setInterval(250)` plus `waited += 250` assumes
+   every tick lands on time; browsers throttle timers, so a 60-second wait took 94 seconds and every
+   reported duration and the drain-test timeout were wrong. Both runners now compare against a
+   `Date.now()` deadline. After the fix a 20-second wait measured 20.1s.
+
+Other decisions:
+
+- Scenario **parameters are component state**, not service state — they are form values.
+- Every scenario is cancellable; `sleep` wakes early so Stop feels immediate.
+- The **purge utility** lives here in a "danger zone" card rather than the global toolbar, so it
+  takes a deliberate visit to reach. It is the three delete-all calls in a `forkJoin` behind
+  `ConfirmDialog`.
+- The **manual chaos scenarios** from the original tab are carried over as static notes — they need
+  services stopped or queues disabled and cannot be driven from the browser.
+- The burst generator is **paced** (delay between submissions); the throughput scenario is the one
+  that fires concurrently. Keeping those distinct is deliberate.
+
+---
+
 ## Open questions carried into later phases
 
 1. ~~**`DeadLetterCategory` wire format.**~~ **CLOSED in Phase 4, confirmed against the live API.**
@@ -277,27 +319,24 @@ What is specific to it:
 
 ---
 
-## Next step — Phase 5 (Scenarios)
+## Next step — Phase 6 (Architecture), the last one
 
-The first phase that is **not** an entity slice. Read the original console's `tab-scenarios` markup
-and its `scenario*()` functions before designing anything — each scenario is a scripted sequence of
-calls against endpoints this app already wraps.
+Static content, no state, no HTTP — the smallest phase. Port the original console's
+`tab-architecture` markup (roughly `TradingAppUI.html:1490–1700`): the component reference (API,
+functions, queues, topics, tables), the event-flow walkthrough, and the notes on what writes where.
 
-1. **Don't force `EntityAdapter` on it.** Model per-scenario run state — idle / running / finished,
-   plus an append-only output log and a pass/fail verdict — as a small dedicated slice keyed by
-   scenario id, or as component state if that reads cleaner.
-2. **Reuse the three API services.** Scenarios drive orders, outbox and dead letter; they should not
-   get their own HTTP layer. The purge-database utility is just the three delete-all calls, and
-   `ConfirmDialog` already exists for it — it is the most destructive thing in the console, so word
-   it accordingly.
-3. **The burst load test** creates many orders at once. `mergeMap` with a concurrency cap is the
-   right shape; do not fire an unbounded number of parallel requests at a local Kestrel.
-4. **Output log**: scenarios narrate as they go, so append lines as steps complete rather than
-   dumping at the end. A monospace, scrollable panel per scenario, with the same look as the JSON
-   viewer.
-5. Scenarios mutate real data. Anything destructive stays behind `ConfirmDialog`.
-
-Then Phase 6 (Architecture), which is static content and the smallest of the six.
+1. It is a **content** problem, not an engineering one. Prose and structure carry it; there is no
+   slice and nothing to poll.
+2. Keep the `PagePlaceholder` component — nothing else uses it after this, but it costs nothing and
+   is the obvious tool if a seventh page ever appears. Just drop its usage from `architecture.html`.
+3. Names in the original are authoritative — `OrderExecutionProcessor`,
+   `ScheduledOutboxMessageProcessor`, `DeadLetterQueueProcessor`, `create_order_queue`,
+   `order_events_topic`, `QuarantinedOutboxMessages`, `UnpublishedTopicMessages`. Cross-check them
+   against `TradingApp-AWS/Functions/*` rather than trusting the HTML, since the backend has moved to
+   AWS since that page was written and some Azure-era names may now be wrong.
+4. That last point is the one thing worth real attention: the architecture page is documentation, and
+   documentation that describes the wrong infrastructure is worse than none. Flag anything that no
+   longer matches instead of copying it over.
 
 ---
 

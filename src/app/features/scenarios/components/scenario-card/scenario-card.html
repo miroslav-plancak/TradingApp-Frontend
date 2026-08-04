@@ -1,0 +1,56 @@
+<mat-card appearance="outlined" class="scenario-card">
+  <mat-card-header>
+    <div class="index" aria-hidden="true">{{ definition().index }}</div>
+    <mat-card-title>{{ definition().title }}</mat-card-title>
+    <mat-card-subtitle>{{ definition().tagline }}</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <p class="description">{{ definition().description }}</p>
+
+    @if (definition().params.length) {
+      <div class="params">
+        @for (param of definition().params; track param.key) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>{{ param.label }}</mat-label>
+            <input
+              matInput
+              type="number"
+              [min]="param.min"
+              [max]="param.max"
+              [disabled]="isRunning()"
+              [ngModel]="valueOf(param.key)"
+              (ngModelChange)="setValue(param.key, $event)"
+            />
+            @if (param.hint) {
+              <span matTextSuffix>{{ param.hint }}</span>
+            }
+          </mat-form-field>
+        }
+      </div>
+    }
+
+    <div class="controls">
+      @if (isRunning()) {
+        <button matButton="filled" type="button" class="stop" (click)="stopped.emit()">
+          <mat-icon>stop</mat-icon>
+          Stop
+        </button>
+      } @else {
+        <button matButton="filled" type="button" (click)="onStart()">
+          <mat-icon>play_arrow</mat-icon>
+          Run scenario
+        </button>
+      }
+
+      <span class="status" [class]="'status-' + run().status">
+        {{ statusLabel() }}
+        @if (durationSeconds()) {
+          <span class="duration">· {{ durationSeconds() }}s</span>
+        }
+      </span>
+    </div>
+
+    <app-scenario-log [lines]="run().lines" />
+  </mat-card-content>
+</mat-card>

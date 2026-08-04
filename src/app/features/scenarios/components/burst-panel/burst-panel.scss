@@ -1,0 +1,60 @@
+.burst-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  mat-form-field {
+    flex: 1 1 8rem;
+    min-width: 7rem;
+  }
+}
+
+.burst-controls {
+  flex: 0 0 auto;
+}
+
+.stop {
+  --mat-button-filled-container-color: var(--mat-sys-error);
+  --mat-button-filled-label-text-color: var(--mat-sys-on-error);
+}
+
+.burst-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 6rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+.stat-value {
+  font: var(--mat-sys-title-large);
+}
+
+.stat-label {
+  font: var(--mat-sys-label-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tone-success {
+  color: #4ade80;
+}
+
+.tone-error {
+  color: var(--mat-sys-error);
+}
+
+.tone-warn {
+  color: #fbbf24;
+}

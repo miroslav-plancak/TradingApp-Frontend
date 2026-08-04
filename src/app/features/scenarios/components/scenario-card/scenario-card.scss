@@ -1,0 +1,72 @@
+.scenario-card {
+  height: 100%;
+}
+
+.index {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin-right: 0.75rem;
+  border-radius: 50%;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font: var(--mat-sys-label-large);
+}
+
+.description {
+  margin: 0 0 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  mat-form-field {
+    flex: 1 1 9rem;
+    min-width: 8rem;
+  }
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stop {
+  --mat-button-filled-container-color: var(--mat-sys-error);
+  --mat-button-filled-label-text-color: var(--mat-sys-on-error);
+}
+
+.status {
+  font: var(--mat-sys-label-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.status-running {
+  color: var(--mat-sys-primary);
+}
+
+.status-passed {
+  color: #4ade80;
+}
+
+.status-partial,
+.status-cancelled {
+  color: #fbbf24;
+}
+
+.status-failed {
+  color: var(--mat-sys-error);
+}
+
+.duration {
+  color: var(--mat-sys-on-surface-variant);
+}

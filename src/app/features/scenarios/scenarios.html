@@ -1,7 +1,79 @@
-<app-page-placeholder
-  heading="Scenarios"
-  phase="Phase 5"
-  icon="science"
-  summary="Canned integration-test runners that drive the live event-driven pipeline end to end, each with its own in-flight state and streaming output log, plus the burst load test and the purge-database dev utility."
-  [planned]="planned"
+<header class="page-header">
+  <div>
+    <h1>Scenarios</h1>
+    <p class="subtitle">
+      Canned integration tests that drive the live pipeline end to end. They create real orders and
+      real dead letters.
+    </p>
+  </div>
+</header>
+
+<section class="scenario-grid" aria-label="Canned scenarios">
+  @for (definition of definitions; track definition.id) {
+    <app-scenario-card
+      [definition]="definition"
+      [run]="runner.runFor(definition.id)()"
+      (started)="startScenario(definition.id, $event)"
+      (stopped)="stopScenario(definition.id)"
+    />
+  }
+</section>
+
+<app-burst-panel
+  class="burst"
+  [state]="burst.state()"
+  [rate]="burst.rate()"
+  (started)="startBurst($event)"
+  (stopped)="stopBurst()"
 />
+
+<mat-card appearance="outlined" class="chaos-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>warning</mat-icon>
+    <mat-card-title>Manual chaos scenarios</mat-card-title>
+    <mat-card-subtitle>
+      These cannot be automated from the browser — they need services stopped or queues disabled
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="chaos-grid">
+      @for (note of chaosNotes; track note.title) {
+        <div class="chaos-note" [class]="'tone-' + note.tone">
+          <h3>{{ note.title }}</h3>
+          <ul>
+            @for (step of note.steps; track step) {
+              <li>{{ step }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>
+
+<mat-card appearance="outlined" class="danger-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar class="danger-icon">delete_forever</mat-icon>
+    <mat-card-title>Danger zone</mat-card-title>
+    <mat-card-subtitle>Development utility — empties every table this console reads</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <p class="danger-text">
+      Purging deletes all rows from <code>Orders</code>, <code>OutboxMessages</code> and
+      <code>DeadLetterLogs</code> in one go. Use it to get back to a clean slate between scenario
+      runs — never against anything you care about.
+    </p>
+    <button
+      matButton="filled"
+      type="button"
+      class="purge"
+      [disabled]="purging()"
+      (click)="purgeDatabase()"
+    >
+      <mat-icon>{{ purging() ? 'hourglass_top' : 'delete_forever' }}</mat-icon>
+      {{ purging() ? 'Purging…' : 'Purge database' }}
+    </button>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,67 @@
+<mat-card appearance="outlined">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>bolt</mat-icon>
+    <mat-card-title>Burst generator</mat-card-title>
+    <mat-card-subtitle>Paced order submission — POST /api/order</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="burst-form">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Order count</mat-label>
+        <input matInput type="number" formControlName="count" min="1" max="500" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Delay</mat-label>
+        <input matInput type="number" formControlName="delay" min="0" max="5000" />
+        <span matTextSuffix>ms</span>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Min quantity</mat-label>
+        <input matInput type="number" formControlName="minQuantity" min="1" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Max quantity</mat-label>
+        <input matInput type="number" formControlName="maxQuantity" min="1" />
+      </mat-form-field>
+
+      <div class="burst-controls">
+        @if (state().running) {
+          <button matButton="filled" type="button" class="stop" (click)="stopped.emit()">
+            <mat-icon>stop</mat-icon>
+            Stop
+          </button>
+        } @else {
+          <button matButton="filled" type="submit">
+            <mat-icon>play_arrow</mat-icon>
+            Start burst
+          </button>
+        }
+      </div>
+    </form>
+
+    <div class="burst-stats">
+      <div class="stat">
+        <span class="stat-value">{{ state().sent }}</span>
+        <span class="stat-label">Sent</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value tone-success">{{ state().success }}</span>
+        <span class="stat-label">Success</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value tone-error">{{ state().failed }}</span>
+        <span class="stat-label">Failed</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value tone-warn">{{ rate() | number: '1.1-1' }}</span>
+        <span class="stat-label">Req/s</span>
+      </div>
+    </div>
+
+    <app-scenario-log [lines]="state().lines" />
+  </mat-card-content>
+</mat-card>
