@@ -1,0 +1,100 @@
+<table mat-table [dataSource]="entries()" [trackBy]="trackById" class="dead-letter-table">
+  <caption class="visually-hidden">
+    Dead-lettered messages for the selected filter, newest first.
+  </caption>
+
+  <ng-container matColumnDef="state">
+    <th mat-header-cell *matHeaderCellDef scope="col">State</th>
+    <td mat-cell *matCellDef="let entry">
+      <span class="chip" [class.chip-resolved]="entry.isResolved">
+        {{ entry.isResolved ? 'RESOLVED' : 'OPEN' }}
+      </span>
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="category">
+    <th mat-header-cell *matHeaderCellDef scope="col">Category</th>
+    <td mat-cell *matCellDef="let entry">
+      <app-dead-letter-category-chip [category]="entry.category" />
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="reason">
+    <th mat-header-cell *matHeaderCellDef scope="col">Reason</th>
+    <td mat-cell *matCellDef="let entry" class="reason-cell">
+      <span [matTooltip]="entry.reason">{{ entry.reason }}</span>
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="clientOrderId">
+    <th mat-header-cell *matHeaderCellDef scope="col">Client order id</th>
+    <td mat-cell *matCellDef="let entry">
+      <span class="mono" [matTooltip]="'Dead letter id: ' + entry.id">
+        {{ entry.clientOrderId }}
+      </span>
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="createdAt">
+    <th mat-header-cell *matHeaderCellDef scope="col">Created</th>
+    <td mat-cell *matCellDef="let entry">{{ entry.createdAt | date: 'medium' }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="resolvedAt">
+    <th mat-header-cell *matHeaderCellDef scope="col">Resolved</th>
+    <td mat-cell *matCellDef="let entry">
+      @if (entry.isResolved && entry.resolvedAt) {
+        <span [matTooltip]="'By ' + entry.resolvedBy">{{ entry.resolvedAt | date: 'medium' }}</span>
+      } @else {
+        —
+      }
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="actions">
+    <th mat-header-cell *matHeaderCellDef scope="col">
+      <span class="visually-hidden">Actions</span>
+    </th>
+    <td mat-cell *matCellDef="let entry" class="actions-cell">
+      @if (isBusy(entry)) {
+        <mat-spinner diameter="20" />
+        <span class="visually-hidden">Working</span>
+      } @else {
+        <button
+          matIconButton
+          type="button"
+          [attr.aria-label]="'View message body of dead letter ' + entry.id"
+          matTooltip="View message body"
+          (click)="bodyOpened.emit(entry)"
+        >
+          <mat-icon>data_object</mat-icon>
+        </button>
+
+        @if (!entry.isResolved) {
+          <button
+            matIconButton
+            type="button"
+            [attr.aria-label]="'Resolve dead letter ' + entry.id"
+            matTooltip="Resolve"
+            (click)="resolved.emit(entry)"
+          >
+            <mat-icon>task_alt</mat-icon>
+          </button>
+        }
+
+        <button
+          matIconButton
+          type="button"
+          [attr.aria-label]="'Delete dead letter ' + entry.id"
+          matTooltip="Delete this entry"
+          (click)="deleted.emit(entry)"
+        >
+          <mat-icon>delete_outline</mat-icon>
+        </button>
+      }
+    </td>
+  </ng-container>
+
+  <tr mat-header-row *matHeaderRowDef="columns"></tr>
+  <tr mat-row *matRowDef="let row; columns: columns"></tr>
+</table>

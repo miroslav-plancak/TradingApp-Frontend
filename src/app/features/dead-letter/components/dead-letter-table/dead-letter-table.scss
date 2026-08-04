@@ -1,0 +1,45 @@
+.dead-letter-table {
+  width: 100%;
+  background: transparent;
+
+  caption {
+    text-align: left;
+  }
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.125rem 0.625rem;
+  border-radius: 1rem;
+  border: 1px solid currentColor;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-label-small);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.chip-resolved {
+  color: #4ade80;
+}
+
+.mono {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.875em;
+}
+
+.reason-cell {
+  max-width: 22rem;
+
+  span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.actions-cell {
+  width: 9rem;
+  text-align: right;
+  white-space: nowrap;
+}

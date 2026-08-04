@@ -1,0 +1,19 @@
+.inject-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+
+  mat-form-field {
+    flex: 1 1 14rem;
+    min-width: 11rem;
+  }
+}
+
+.full-width {
+  flex: 1 1 100%;
+}
+
+.regenerate {
+  margin-top: 0.5rem;
+}

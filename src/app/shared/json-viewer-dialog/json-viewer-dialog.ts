@@ -30,10 +30,10 @@ export interface JsonViewerDialogData {
       @if (data.subtitle) {
         <p class="subtitle">{{ data.subtitle }}</p>
       }
-      @if (!parsed()) {
+      @if (malformed()) {
         <p class="unparsed">
           <mat-icon aria-hidden="true">warning</mat-icon>
-          Not valid JSON — showing the raw value.
+          Starts like JSON but does not parse — showing the raw value.
         </p>
       }
       <pre class="json">{{ formatted() }}</pre>
@@ -84,8 +84,16 @@ export class JsonViewerDialog {
 
   private readonly result = signal(tryFormat(this.data.value));
 
-  protected readonly parsed = computed(() => this.result().parsed);
   protected readonly formatted = computed(() => this.result().text);
+
+  /**
+   * Warn only when the value *looks* like JSON but will not parse.
+   *
+   * Plenty of real values are plain scalars — `OutboxMessageResponse.payload`
+   * on the live API is a bare order-id GUID, not a document — and flagging
+   * those as broken would cry wolf on every single row.
+   */
+  protected readonly malformed = computed(() => this.result().malformed);
 
   protected copy(): void {
     navigator.clipboard
@@ -95,13 +103,15 @@ export class JsonViewerDialog {
   }
 }
 
-function tryFormat(value: string): { parsed: boolean; text: string } {
-  if (!value?.trim()) {
-    return { parsed: false, text: '(empty)' };
+function tryFormat(value: string): { malformed: boolean; text: string } {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return { malformed: false, text: '(empty)' };
   }
   try {
-    return { parsed: true, text: JSON.stringify(JSON.parse(value), null, 2) };
+    return { malformed: false, text: JSON.stringify(JSON.parse(trimmed), null, 2) };
   } catch {
-    return { parsed: false, text: value };
+    const looksLikeJson = trimmed.startsWith('{') || trimmed.startsWith('[');
+    return { malformed: looksLikeJson, text: value };
   }
 }

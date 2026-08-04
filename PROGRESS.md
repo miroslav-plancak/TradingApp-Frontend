@@ -4,7 +4,7 @@ Resumable checkpoint for the Angular/ngRx port described in `AGENT_BRIEF.md`.
 **Read `AGENT_BRIEF.md` first** — it holds the API surface, the DTO table, and the scope decisions.
 This file records only what has actually been built and what to do next.
 
-Last updated: 2026-08-04 (end of Phase 3).
+Last updated: 2026-08-04 (end of Phase 4).
 
 ---
 
@@ -15,7 +15,7 @@ Last updated: 2026-08-04 (end of Phase 3).
 | 1 | Repo + scaffold | **Done** |
 | 2 | Orders feature (reference vertical slice) | **Done** |
 | 3 | Outbox feature | **Done** |
-| 4 | Dead Letter feature | Not started |
+| 4 | Dead Letter feature | **Done** |
 | 5 | Scenarios feature | Not started |
 | 6 | Architecture/About page | Not started |
 
@@ -183,38 +183,68 @@ store layout, same effect shapes. Only the differences are worth reading:
 
 ---
 
+## What Phase 4 delivered
+
+`features/dead-letter/` follows Outbox closely (filtered list + `/stats` + per-row actions).
+What is specific to it:
+
+- **Two lookups, one slot.** `lookupById` and `lookupByClientOrderId` are separate actions hitting
+  separate endpoints, but they share one `lookup` slot in state and one `lookupSuccess`/`lookupFailure`
+  pair — only one result is ever on screen. Client order id is the id an operator usually has.
+- **`ResolveDialog`** is a real form (`resolutionNotes` + `resolvedBy`, both required) rather than a
+  confirm, and returns the request object; the container dispatches it. `mergeMap`, matching the
+  per-row call in Outbox.
+- **Resolution fields are only rendered when `isResolved`.** The create endpoint returns literal
+  placeholder text — `resolutionNotes: "hardcoded ResolutionNotes"`, `resolvedBy: "hardcoded
+  ResolvedBy"` — on a brand-new, unresolved entry. Showing them unconditionally would display
+  fiction.
+- **Inject form** defaults `clientOrderId` and `correlationId` to fresh GUIDs and regenerates them
+  after each submit, so repeated injections don't collide. It exposes `category` and `correlationId`,
+  which the original console's form omitted even though the DTO carries them.
+- **Delete copy says deleting is not resolving** — the triage record goes with the row.
+- `messageBody` renders through the same `shared/json-viewer-dialog/` as outbox payloads.
+- Flattening operators unchanged from Phases 2–3: `switchMap` loads/lookups, `mergeMap` per-row
+  resolve/delete, `exhaustMap` create and delete-all.
+
+---
+
 ## Open questions carried into later phases
 
-1. **`DeadLetterCategory` wire format — verified statically, not at runtime.** The brief asked for a
-   runtime check; the local API at `https://localhost:7224` was **not running** during Phase 1.
-   Static evidence: no `JsonStringEnumConverter` is registered anywhere in `TradingApp-AWS` (the
-   solution's only `JsonSerializerOptions` lives in `TradingAppLogger.cs`, not in the API's
-   `Program.cs`), so System.Text.Json's **numeric** default applies. Modelled accordingly as a
-   const-object enum `{ BusinessFailure: 0, InfrastructureFailure: 1 }`.
-   **Phase 4 must re-confirm against one real response.** If it turns out to be a string, only
-   `core/models/dead-letter.model.ts` (the type plus its label map) changes.
+1. ~~**`DeadLetterCategory` wire format.**~~ **CLOSED in Phase 4, confirmed against the live API.**
+   It is **numeric in both directions**: a real response carries `"category":1`, and posting
+   `"category":"InfrastructureFailure"` is rejected with
+   `400 … The JSON value could not be converted to TradingApp.Domain.Models.Enums.DeadLetterCategory`.
+   The const-object enum `{ BusinessFailure: 0, InfrastructureFailure: 1 }` in
+   `core/models/dead-letter.model.ts` is correct. Nothing to revisit unless a
+   `JsonStringEnumConverter` is added to the API later.
 2. **Base URL includes `/api`.** The brief gives the base as `https://localhost:7224/api`, while the
    original HTML's field holds `https://localhost:7224` and puts `/api` in each path. This app
    follows the brief: the editable field holds the full base *including* `/api`, so service calls
    are `apiConfig.url('/order')`. Anyone pasting a URL from the old console must append `/api`.
-3. **The real backend has never been reached from this app.** `TradingApp.API` cannot start on this
-   machine: `Program.cs` line 19 loads configuration from Azure Key Vault at startup and
-   `DefaultAzureCredential` fails every credential (the Azure CLI login is against a different
-   tenant — `az login --tenant d5508570-…` would be needed, and it is interactive). Phase 2 was
-   therefore verified against a throwaway Node mock of the `/api/order` contract in the session
-   scratchpad, pointed at via the console's editable base URL. Everything matching the brief's table
-   is exercised, but **the first run against the real API may still surface shape surprises** —
-   especially date formats and `DeadLetterCategory` (see item 1). Re-check when the backend runs.
+3. ~~**The real backend has never been reached from this app.**~~ **CLOSED in Phase 4.** The API was
+   migrated off Azure Key Vault onto AWS Secrets Manager (`TradingApp-AWS` commit `7799874` on
+   `dev`) and now starts locally. Orders, Outbox and Dead Letter have all been exercised against it.
+   Two notes for whoever runs it next:
+   - `dotnet run` picks the **http** launch profile (port 5275). Pass
+     `--launch-profile https` to get `https://localhost:7224`, which is the base URL this app
+     defaults to.
+   - Two shape differences from the Phase 2/3 mock, both handled, neither a bug:
+     `OutboxMessageResponse.payload` is a **bare client-order-id GUID**, not a JSON document, and
+     `type` is a short name (`"OrderCreated"`), not a CLR type name. The JSON viewer only warns
+     about unparseable content when it *starts* like JSON, so scalar payloads render plainly.
+   - Dates come back as `2026-08-04T14:55:29.7137241+00:00` (7-digit fractional seconds plus
+     offset). `Date` parses this fine; no custom handling needed.
 4. **CORS is fine.** `Program.cs` registers an `AllowAll` policy (`AllowAnyOrigin/Method/Header`),
    so `localhost:4200` needs no proxy. The dev certificate still has to be accepted once in the
    browser, or every request fails as status 0.
-5. **Bug in the *old* console, for the record — not ported.** `TradingAppUI.html:2189`
-   (`markOutboxProcessed`) builds its path with backslashes:
-   `'\api\outboxmessage\' + id + '\mark-processed'`. In JavaScript `\a`, `\o` and `\m` are just
-   those letters, so the request goes to a garbage relative path and mark-processed has been broken
-   in the original UI. Nothing to fix in this repo — the port builds the path correctly — but worth
-   knowing if anyone compares behaviour against the old console. The backend endpoint itself is
-   fine.
+5. **Bug in the *old* console, for the record — not ported.** Several functions in
+   `TradingAppUI.html` build their paths with **backslashes** instead of slashes, e.g. line 2189
+   `'\api\outboxmessage\' + id + '\mark-processed'`, and the same in `resolveDeadLetter` (2288),
+   `createDeadLetter` (2301) and `deleteDeadLetterById` (2315). In JavaScript `\a`, `\o`, `\m`, `\d`
+   and `\r` are just those letters, so those requests go to garbage relative paths — mark-processed,
+   resolve, inject and delete-by-id have all been broken in the original UI. Nothing to fix in this
+   repo; the port builds every path correctly and all four are verified working against the live
+   API. Worth knowing only if someone compares behaviour against the old console.
 
 ---
 
@@ -247,25 +277,27 @@ store layout, same effect shapes. Only the differences are worth reading:
 
 ---
 
-## Next step — Phase 4 (Dead Letter)
+## Next step — Phase 5 (Scenarios)
 
-Closest to Outbox: filtered list (`all` / `unresolved`), a `/stats` endpoint loaded alongside it,
-per-row actions, and a JSON body to inspect. Copy `features/outbox/` and adapt.
+The first phase that is **not** an entity slice. Read the original console's `tab-scenarios` markup
+and its `scenario*()` functions before designing anything — each scenario is a scripted sequence of
+calls against endpoints this app already wraps.
 
-1. **Re-verify `DeadLetterCategory` on the wire before writing any of it** — see open question 1.
-   One real response settles whether the model stays a numeric enum.
-2. **Endpoints** (`DeadLetterController`): list, `/unresolved`, `/{id}`, `POST /{id}/resolve`,
-   `/stats`, `/by-client-order/{clientOrderId}`, `POST` create, `DELETE /{id}`, `DELETE` all.
-3. **Two lookups, not one**: by id *and* by client order id. They are separate endpoints returning
-   the same DTO — one lookup slot in state with an action per endpoint is enough.
-4. **Resolve dialog**: `ResolveDeadLetterRequestDTO` is `{ resolutionNotes, resolvedBy }` — a real
-   form in a dialog, not a bare confirm. `exhaustMap`, like create in Orders.
-5. **Manual inject form**: `CreateDeadLetterRequestDTO` needs `clientOrderId`, `messageBody`,
-   `reason`, `category`, `correlationId`. It exists to generate test data, so default the GUIDs to
-   freshly generated ones rather than making the operator invent them.
-6. **`messageBody`** renders through `shared/json-viewer-dialog/` exactly as outbox payloads do.
+1. **Don't force `EntityAdapter` on it.** Model per-scenario run state — idle / running / finished,
+   plus an append-only output log and a pass/fail verdict — as a small dedicated slice keyed by
+   scenario id, or as component state if that reads cleaner.
+2. **Reuse the three API services.** Scenarios drive orders, outbox and dead letter; they should not
+   get their own HTTP layer. The purge-database utility is just the three delete-all calls, and
+   `ConfirmDialog` already exists for it — it is the most destructive thing in the console, so word
+   it accordingly.
+3. **The burst load test** creates many orders at once. `mergeMap` with a concurrency cap is the
+   right shape; do not fire an unbounded number of parallel requests at a local Kestrel.
+4. **Output log**: scenarios narrate as they go, so append lines as steps complete rather than
+   dumping at the end. A monospace, scrollable panel per scenario, with the same look as the JSON
+   viewer.
+5. Scenarios mutate real data. Anything destructive stays behind `ConfirmDialog`.
 
-Then Phase 5 (Scenarios) and Phase 6 (Architecture).
+Then Phase 6 (Architecture), which is static content and the smallest of the six.
 
 ---
 
@@ -277,11 +309,17 @@ npm run build    # production build
 npm test         # vitest, single run: npx ng test --watch=false
 ```
 
-The backend must be running separately: `TradingApp.API` at `https://localhost:7224`
-(a normal `app.Run()` ASP.NET Core app, not Lambda-hosted). Accept its dev certificate in the
-browser once, or every request fails as status 0.
+The backend must be running separately (a normal `app.Run()` ASP.NET Core app, not Lambda-hosted):
 
-**If the backend will not start** (Key Vault / `DefaultAzureCredential`, see open question 3), the
-console can be pointed at any stand-in through the toolbar's base-URL field — that field exists
-precisely for this. A minimal Node mock of the `/api/order` contract is enough to exercise the whole
-Orders slice; keep such a mock outside the repo.
+```bash
+dotnet run --project ../TradingApp-AWS/TradingApp.API/TradingApp.API.csproj --launch-profile https
+```
+
+`--launch-profile https` matters: the default profile listens on `http://localhost:5275`, while this
+app defaults to `https://localhost:7224`. Either accept the dev certificate in the browser once, or
+point the toolbar's base-URL field at the http port — every request fails as status 0 otherwise.
+Startup reads a secret from AWS Secrets Manager (`eu-north-1`), so it needs working AWS credentials.
+
+**If the backend cannot run**, the console can be pointed at any stand-in through the base-URL field —
+that field exists precisely for this. A small Node mock of the documented contract is enough to
+exercise a whole feature slice; keep such a mock outside the repo.

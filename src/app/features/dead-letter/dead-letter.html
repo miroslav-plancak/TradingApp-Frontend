@@ -1,7 +1,122 @@
-<app-page-placeholder
-  heading="Dead Letter"
-  phase="Phase 4"
-  icon="report"
-  summary="Triage poison messages: inspect dead-lettered payloads and failure reasons, look them up by id or client order id, resolve them with notes, and inject synthetic entries for testing."
-  [planned]="planned"
-/>
+<header class="page-header">
+  <div>
+    <h1>Dead Letter</h1>
+    <p class="subtitle">Messages parked from the DLQ for human triage and root-cause analysis</p>
+  </div>
+
+  <div class="page-actions">
+    <button
+      matButton="outlined"
+      type="button"
+      [disabled]="loading()"
+      matTooltip="Reload the list and stats now"
+      (click)="refresh()"
+    >
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+
+    <mat-slide-toggle
+      [checked]="autoRefresh()"
+      (change)="toggleAutoRefresh($event.checked)"
+      [matTooltip]="'Reload every ' + pollSeconds + ' seconds'"
+    >
+      Auto {{ pollSeconds }}s
+    </mat-slide-toggle>
+
+    <button
+      matButton="outlined"
+      type="button"
+      class="destructive"
+      [disabled]="entryCount() === 0"
+      (click)="deleteAll()"
+    >
+      <mat-icon>delete_sweep</mat-icon>
+      Delete all
+    </button>
+  </div>
+</header>
+
+<div class="visually-hidden" role="status" aria-live="polite">{{ liveSummary() }}</div>
+
+<app-dead-letter-stats [stats]="stats()" />
+
+<div class="content-grid">
+  <mat-card appearance="outlined" class="list-card">
+    <mat-card-header>
+      <mat-card-title>Dead letter logs</mat-card-title>
+      <mat-card-subtitle>
+        GET /api/deadletter{{ filter() === 'all' ? '' : '/unresolved' }}
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="list-toolbar">
+        <mat-button-toggle-group
+          aria-label="Filter entries"
+          [value]="filter()"
+          (change)="changeFilter($event.value)"
+        >
+          @for (option of filters; track option.value) {
+            <mat-button-toggle [value]="option.value">{{ option.label }}</mat-button-toggle>
+          }
+        </mat-button-toggle-group>
+
+        @if (entryCount() > 0) {
+          <p class="category-split">
+            {{ businessCount() }} business · {{ infrastructureCount() }} infrastructure
+          </p>
+        }
+      </div>
+
+      @if (error()) {
+        <p class="load-error">
+          <mat-icon aria-hidden="true">error_outline</mat-icon>
+          <span>{{ error() }}</span>
+          <button matButton type="button" (click)="refresh()">Retry</button>
+        </p>
+      }
+
+      @if (initialLoading()) {
+        <div class="centered">
+          <mat-spinner diameter="36" />
+          <p>Loading dead letters…</p>
+        </div>
+      } @else if (entryCount() > 0) {
+        <app-dead-letter-table
+          [entries]="entries()"
+          [resolvingIds]="resolvingIds()"
+          [deletingIds]="deletingIds()"
+          (bodyOpened)="viewBody($event)"
+          (resolved)="resolveEntry($event)"
+          (deleted)="deleteEntry($event)"
+        />
+      } @else if (isEmpty()) {
+        <div class="centered">
+          <mat-icon class="empty-icon" aria-hidden="true">check_circle</mat-icon>
+          <p>
+            No {{ filter() === 'unresolved' ? 'unresolved ' : '' }}dead letters. Nothing has been
+            parked from the DLQ — inject one below to exercise the triage flow.
+          </p>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <div class="side-column">
+    <app-dead-letter-lookup
+      [pending]="lookup().pending"
+      [result]="lookup().entry"
+      [error]="lookup().error"
+      [busy]="lookupBusy()"
+      (lookedUpById)="lookupById($event)"
+      (lookedUpByClientOrderId)="lookupByClientOrderId($event)"
+      (cleared)="clearLookup()"
+      (bodyOpened)="viewBody($event)"
+      (resolved)="resolveEntry($event)"
+      (deleted)="deleteEntry($event)"
+    />
+
+    <app-dead-letter-inject-form [submitting]="creating()" (created)="injectEntry($event)" />
+  </div>
+</div>
