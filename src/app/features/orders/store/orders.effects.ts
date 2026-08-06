@@ -7,6 +7,7 @@ import { toErrorMessage } from '../../../core/api/http-error';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { OrdersApiService } from '../orders-api.service';
 import { OrdersActions } from './orders.actions';
+import { OrderStatusHubService } from '../../../core/signalr/order-status-hub.service';
 
 export const loadOrders$ = createEffect(
   (actions$ = inject(Actions), api = inject(OrdersApiService)) =>
@@ -171,3 +172,16 @@ export const notifyFailure$ = createEffect(
     ),
   { functional: true, dispatch: false },
 );
+
+  /**
+   * The push-based counterpart to pollOrders$ below - dispatches the exact same
+   * loadOrders() action a poll tick or the manual refresh button would, so this
+   * is the only place that knows SignalR exists.
+   */
+  export const signalRPush$ = createEffect(
+    (hub = inject(OrderStatusHubService)) => {
+      hub.connect();
+      return hub.orderStatusChanged$.pipe(map(() => OrdersActions.loadOrders()));
+    },
+    { functional: true },
+  );
