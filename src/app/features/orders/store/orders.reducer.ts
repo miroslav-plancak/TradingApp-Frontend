@@ -115,5 +115,7 @@ export const ordersFeature = createFeature({
       ...state,
       autoRefresh: enabled,
     })),
+
+    on(OrdersActions.orderStatusPushed, (state, { order }) => ordersAdapter.upsertOne(order, state)),
   ),
 });

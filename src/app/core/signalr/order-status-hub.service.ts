@@ -5,11 +5,6 @@
   import { ApiConfigService } from '../config/api-config.service';
   import { OrderResponse } from '../models/order.model';
 
-  export interface OrderStatusChangedEvent {
-    clientOrderId: string;
-    status: string;
-  }
-
   /**
    * Every request/response pair this hub supports - the client invoke() method
    * name mapped to the server push event name that answers it. This is the
@@ -30,14 +25,14 @@
     [OrderHubRequestMethod.RequestCurrentStatus]: OrderHubResponseEvent.CurrentOrderStatus,
   };
 
-  // type HubRequestMethod = OrderHubRequestMethod;
-
   @Injectable({ providedIn: 'root' })
   export class OrderStatusHubService {
     private readonly apiConfig = inject(ApiConfigService);
     private connection: signalR.HubConnection | null = null;
 
-    private readonly _orderStatusChanged$ = new Subject<OrderStatusChangedEvent>();
+    // The push now carries the full order (see SignalRPushBackgroundService), so
+    // this is Subject<OrderResponse> directly - no separate wrapper event type needed.
+    private readonly _orderStatusChanged$ = new Subject<OrderResponse>();
     readonly orderStatusChanged$ = this._orderStatusChanged$.asObservable();
 
     // Not exposed publicly - only requestCurrentStatus() should ever read from
@@ -57,8 +52,8 @@
         .withAutomaticReconnect()
         .build();
 
-      this.connection.on('OrderStatusChanged', (clientOrderId: string, status: string) => {
-        this._orderStatusChanged$.next({ clientOrderId, status });
+      this.connection.on('OrderStatusChanged', (order: OrderResponse) => {
+        this._orderStatusChanged$.next(order);
       });
 
       this.connection.on(HUB_REQUEST_RESPONSE.RequestCurrentStatus, (order: OrderResponse) => {

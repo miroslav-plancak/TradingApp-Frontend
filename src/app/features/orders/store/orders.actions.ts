@@ -34,5 +34,8 @@ export const OrdersActions = createActionGroup({
 
     /** The "Auto 5s" toggle. The only action that knows polling exists. */
     'Auto Refresh Toggled': props<{ enabled: boolean }>(),
+
+    /** A SignalR push carrying one already-updated order — patched straight into the entity store. */
+    'Order Status Pushed': props<{ order: OrderResponse }>(),
   },
 });

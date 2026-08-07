@@ -184,14 +184,15 @@ export const notifyFailure$ = createEffect(
 );
 
   /**
-   * The push-based counterpart to pollOrders$ below - dispatches the exact same
-   * loadOrders() action a poll tick or the manual refresh button would, so this
-   * is the only place that knows SignalR exists.
+   * The push-based counterpart to pollOrders$ below. Unlike a poll tick, a push
+   * already carries the one order that changed, so this patches that row into
+   * the entity store directly instead of reloading the whole list - this is the
+   * only place that knows SignalR exists.
    */
   export const signalRPush$ = createEffect(
     (hub = inject(OrderStatusHubService)) => {
       hub.connect();
-      return hub.orderStatusChanged$.pipe(map(() => OrdersActions.loadOrders()));
+      return hub.orderStatusChanged$.pipe(map((order) => OrdersActions.orderStatusPushed({ order })));
     },
     { functional: true },
   );
