@@ -4,6 +4,7 @@ import { ORDER_STATUSES, OrderStatus } from '../../../core/models';
 import { ordersAdapter, ordersFeature } from './orders.reducer';
 
 const { selectAll, selectTotal } = ordersAdapter.getSelectors();
+const { selectEntities } = ordersAdapter.getSelectors();
 
 export const {
   selectOrdersState,
@@ -18,6 +19,7 @@ export const {
 
 export const selectAllOrders = createSelector(selectOrdersState, selectAll);
 export const selectOrderCount = createSelector(selectOrdersState, selectTotal);
+export const selectOrderEntities = createSelector(selectOrdersState, selectEntities);
 
 /**
  * Only true for the very first load, so the polled refresh every few seconds
@@ -53,3 +55,12 @@ export const selectProcessedCount = createSelector(
   selectAllOrders,
   (orders) => orders.filter((order) => order.isProcessed).length,
 );
+
+export const selectLookupOrder = createSelector(
+  selectLookup,
+  selectOrderEntities,
+  (lookup, entities) => ({
+    ...lookup,
+    order: lookup.order ? (entities[lookup.order.id] ?? lookup.order) : null
+  })
+)

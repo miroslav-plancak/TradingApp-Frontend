@@ -1,6 +1,16 @@
 import { inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { EMPTY, catchError, exhaustMap, map, mergeMap, of, switchMap, tap, timer } from 'rxjs';
+import {
+  EMPTY,
+  catchError,
+  exhaustMap,
+  map,
+  mergeMap,
+  of,
+  switchMap,
+  tap,
+  timer,
+} from 'rxjs';
 
 import { ApiConfigService } from '../../../core/config/api-config.service';
 import { toErrorMessage } from '../../../core/api/http-error';
@@ -55,11 +65,11 @@ export const reloadAfterCreate$ = createEffect(
 );
 
 export const lookupOrder$ = createEffect(
-  (actions$ = inject(Actions), api = inject(OrdersApiService)) =>
+  (actions$ = inject(Actions), hub = inject(OrderStatusHubService)) =>
     actions$.pipe(
       ofType(OrdersActions.lookupOrder),
       switchMap(({ orderId }) =>
-        api.getById(orderId).pipe(
+        hub.requestCurrentStatus(orderId).pipe(
           map((order) => OrdersActions.lookupOrderSuccess({ order })),
           catchError((error: unknown) =>
             of(

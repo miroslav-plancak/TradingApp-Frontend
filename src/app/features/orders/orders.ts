@@ -33,6 +33,7 @@ import {
   selectIsInitialLoading,
   selectLoading,
   selectLookup,
+  selectLookupOrder,
   selectOrderCount,
   selectProcessedCount,
   selectStatusCounts,
@@ -74,7 +75,7 @@ export class Orders implements OnInit, OnDestroy {
   protected readonly creating = this.store.selectSignal(selectCreating);
   protected readonly deletingIds = this.store.selectSignal(selectDeletingIds);
   protected readonly autoRefresh = this.store.selectSignal(selectAutoRefresh);
-  protected readonly lookup = this.store.selectSignal(selectLookup);
+  protected readonly lookup = this.store.selectSignal(selectLookupOrder);
   protected readonly orderCount = this.store.selectSignal(selectOrderCount);
   protected readonly processedCount = this.store.selectSignal(selectProcessedCount);
   protected readonly statusCounts = this.store.selectSignal(selectStatusCounts);
