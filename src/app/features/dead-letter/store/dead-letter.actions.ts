@@ -52,5 +52,8 @@ export const DeadLetterActions = createActionGroup({
     'Delete All Entries Failure': props<{ error: string }>(),
 
     'Auto Refresh Toggled': props<{ enabled: boolean }>(),
+
+    /** A SignalR push carrying one already-created entry — patched straight into the entity store. */
+    'Entry Pushed': props<{ entry: DeadLetterLogResponse }>(),
   },
 });

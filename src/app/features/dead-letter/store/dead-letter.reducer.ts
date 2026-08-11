@@ -141,5 +141,14 @@ export const deadLetterFeature = createFeature({
       ...state,
       autoRefresh: enabled,
     })),
+
+    // A push is always a freshly-created, unresolved entry - it belongs under
+    // every filter, so no removeOne branch is needed (unlike resolveEntrySuccess).
+    on(DeadLetterActions.entryPushed, (state, { entry }) =>
+      deadLetterAdapter.upsertOne(entry, {
+        ...state,
+        lookup: state.lookup.entry?.id === entry.id ? { ...state.lookup, entry } : state.lookup,
+      }),
+    ),
   ),
 });

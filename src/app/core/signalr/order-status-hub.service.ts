@@ -4,6 +4,8 @@
 
   import { ApiConfigService } from '../config/api-config.service';
   import { OrderResponse } from '../models/order.model';
+  import { OutboxMessageResponse } from '../models/outbox.model';
+  import { DeadLetterLogResponse } from '../models/dead-letter.model';
 
   /**
    * Every request/response pair this hub supports - the client invoke() method
@@ -25,6 +27,21 @@
     [OrderHubRequestMethod.RequestCurrentStatus]: OrderHubResponseEvent.CurrentOrderStatus,
   };
 
+  /** Server push event name for the Order entity. */
+  export enum OrderHubPushEvent {
+    OrderStatusChangedEvent = 'OrderStatusChangedEvent',
+  }
+
+  /** Server push event name for the Outbox entity. */
+  export enum OutboxHubPushEvent {
+    OutboxMessageProcessedEvent = 'OutboxMessageProcessedEvent',
+  }
+
+  /** Server push event name for the DeadLetter entity. */
+  export enum DeadLetterHubPushEvent {
+    DeadLetterLogPersistedEvent = 'DeadLetterLogPersistedEvent',
+  }
+
   @Injectable({ providedIn: 'root' })
   export class OrderStatusHubService {
     private readonly apiConfig = inject(ApiConfigService);
@@ -34,6 +51,14 @@
     // this is Subject<OrderResponse> directly - no separate wrapper event type needed.
     private readonly _orderStatusChanged$ = new Subject<OrderResponse>();
     readonly orderStatusChanged$ = this._orderStatusChanged$.asObservable();
+
+    // Same shape as orderStatusChanged$ - the backend resolves the full row
+    // before pushing, so these are the full DTOs, not a follow-up-fetch signal.
+    private readonly _outboxMessageChanged$ = new Subject<OutboxMessageResponse>();
+    readonly outboxMessageChanged$ = this._outboxMessageChanged$.asObservable();
+
+    private readonly _deadLetterLogChanged$ = new Subject<DeadLetterLogResponse>();
+    readonly deadLetterLogChanged$ = this._deadLetterLogChanged$.asObservable();
 
     // Not exposed publicly - only requestCurrentStatus() should ever read from
     // this, so callers never need to know the underlying event/Subject exists.
@@ -52,8 +77,20 @@
         .withAutomaticReconnect()
         .build();
 
-      this.connection.on('OrderStatusChanged', (order: OrderResponse) => {
+      // Event name matches the backend's nameof(OrderStatusChangedEvent) exactly -
+      // SignalRPushBackgroundService can never send a name this doesn't match.
+      this.connection.on(OrderHubPushEvent.OrderStatusChangedEvent, (order: OrderResponse) => {
         this._orderStatusChanged$.next(order);
+      });
+
+      // Event names match the backend's nameof(...) for each event type exactly -
+      // same reasoning as OrderStatusChangedEvent above.
+      this.connection.on(OutboxHubPushEvent.OutboxMessageProcessedEvent, (message: OutboxMessageResponse) => {
+        this._outboxMessageChanged$.next(message);
+      });
+
+      this.connection.on(DeadLetterHubPushEvent.DeadLetterLogPersistedEvent, (entry: DeadLetterLogResponse) => {
+        this._deadLetterLogChanged$.next(entry);
       });
 
       this.connection.on(HUB_REQUEST_RESPONSE.RequestCurrentStatus, (order: OrderResponse) => {

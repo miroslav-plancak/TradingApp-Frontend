@@ -43,5 +43,8 @@ export const OutboxActions = createActionGroup({
     'Delete All Messages Failure': props<{ error: string }>(),
 
     'Auto Refresh Toggled': props<{ enabled: boolean }>(),
+
+    /** A SignalR push carrying one already-updated message — patched straight into the entity store. */
+    'Message Pushed': props<{ message: OutboxMessageResponse }>(),
   },
 });

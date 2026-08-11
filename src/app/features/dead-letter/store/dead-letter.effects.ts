@@ -18,6 +18,7 @@ import {
 import { toErrorMessage } from '../../../core/api/http-error';
 import { ApiConfigService } from '../../../core/config/api-config.service';
 import { NotificationService } from '../../../core/notifications/notification.service';
+import { OrderStatusHubService } from '../../../core/signalr/order-status-hub.service';
 import { DeadLetterApiService } from '../dead-letter-api.service';
 import { DeadLetterActions } from './dead-letter.actions';
 import { selectFilter } from './dead-letter.selectors';
@@ -232,4 +233,16 @@ export const notifyFailure$ = createEffect(
       tap(({ error }) => notifications.error(error)),
     ),
   { functional: true, dispatch: false },
+);
+
+/**
+ * The push-based counterpart to pollDeadLetters$ above. `hub.connect()` is a
+ * no-op if another feature's effect already connected - one shared connection.
+ */
+export const signalRPush$ = createEffect(
+  (hub = inject(OrderStatusHubService)) => {
+    hub.connect();
+    return hub.deadLetterLogChanged$.pipe(map((entry) => DeadLetterActions.entryPushed({ entry })));
+  },
+  { functional: true },
 );

@@ -144,5 +144,14 @@ export const outboxFeature = createFeature({
       ...state,
       autoRefresh: enabled,
     })),
+
+    // A push always means the message just became processed - same "does it
+    // still belong under the active filter" logic as markProcessedSuccess.
+    on(OutboxActions.messagePushed, (state, { message }) => {
+      const synced = { ...state, lookup: syncLookup(state.lookup, message) };
+      return state.filter === 'unprocessed'
+        ? outboxAdapter.removeOne(message.id, synced)
+        : outboxAdapter.upsertOne(message, synced);
+    }),
   ),
 });

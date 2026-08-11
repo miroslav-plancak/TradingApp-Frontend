@@ -18,6 +18,7 @@ import {
 import { toErrorMessage } from '../../../core/api/http-error';
 import { ApiConfigService } from '../../../core/config/api-config.service';
 import { NotificationService } from '../../../core/notifications/notification.service';
+import { OrderStatusHubService } from '../../../core/signalr/order-status-hub.service';
 import { OutboxApiService } from '../outbox-api.service';
 import { OutboxActions } from './outbox.actions';
 import { selectFilter } from './outbox.selectors';
@@ -202,4 +203,16 @@ export const notifyFailure$ = createEffect(
       tap(({ error }) => notifications.error(error)),
     ),
   { functional: true, dispatch: false },
+);
+
+/**
+ * The push-based counterpart to pollOutbox$ above. `hub.connect()` is a no-op
+ * if Orders' effect already connected - one shared connection, same as Orders.
+ */
+export const signalRPush$ = createEffect(
+  (hub = inject(OrderStatusHubService)) => {
+    hub.connect();
+    return hub.outboxMessageChanged$.pipe(map((message) => OutboxActions.messagePushed({ message })));
+  },
+  { functional: true },
 );
