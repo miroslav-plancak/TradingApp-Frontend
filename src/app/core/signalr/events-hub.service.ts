@@ -43,7 +43,7 @@
   }
 
   @Injectable({ providedIn: 'root' })
-  export class OrderStatusHubService {
+  export class EventsHubService {
     private readonly apiConfig = inject(ApiConfigService);
     private connection: signalR.HubConnection | null = null;
 
@@ -70,7 +70,7 @@
       }
 
       // apiConfig.baseUrl() includes "/api" - the hub isn't under that prefix.
-      const hubUrl = `${this.apiConfig.baseUrl().replace(/\/api\/?$/, '')}/hubs/orders`;
+      const hubUrl = `${this.apiConfig.baseUrl().replace(/\/api\/?$/, '')}/hubs/events`;
 
       this.connection = new signalR.HubConnectionBuilder()
         .withUrl(hubUrl)

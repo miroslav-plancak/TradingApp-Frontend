@@ -17,7 +17,7 @@ import { toErrorMessage } from '../../../core/api/http-error';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { OrdersApiService } from '../orders-api.service';
 import { OrdersActions } from './orders.actions';
-import { OrderStatusHubService } from '../../../core/signalr/order-status-hub.service';
+import { EventsHubService } from '../../../core/signalr/events-hub.service';
 
 export const loadOrders$ = createEffect(
   (actions$ = inject(Actions), api = inject(OrdersApiService)) =>
@@ -65,7 +65,7 @@ export const reloadAfterCreate$ = createEffect(
 );
 
 export const lookupOrder$ = createEffect(
-  (actions$ = inject(Actions), hub = inject(OrderStatusHubService)) =>
+  (actions$ = inject(Actions), hub = inject(EventsHubService)) =>
     actions$.pipe(
       ofType(OrdersActions.lookupOrder),
       switchMap(({ orderId }) =>
@@ -190,7 +190,7 @@ export const notifyFailure$ = createEffect(
    * only place that knows SignalR exists.
    */
   export const signalRPush$ = createEffect(
-    (hub = inject(OrderStatusHubService)) => {
+    (hub = inject(EventsHubService)) => {
       hub.connect();
       return hub.orderStatusChanged$.pipe(map((order) => OrdersActions.orderStatusPushed({ order })));
     },

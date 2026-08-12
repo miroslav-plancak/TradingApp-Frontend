@@ -18,7 +18,7 @@ import {
 import { toErrorMessage } from '../../../core/api/http-error';
 import { ApiConfigService } from '../../../core/config/api-config.service';
 import { NotificationService } from '../../../core/notifications/notification.service';
-import { OrderStatusHubService } from '../../../core/signalr/order-status-hub.service';
+import { EventsHubService } from '../../../core/signalr/events-hub.service';
 import { DeadLetterApiService } from '../dead-letter-api.service';
 import { DeadLetterActions } from './dead-letter.actions';
 import { selectFilter } from './dead-letter.selectors';
@@ -240,7 +240,7 @@ export const notifyFailure$ = createEffect(
  * no-op if another feature's effect already connected - one shared connection.
  */
 export const signalRPush$ = createEffect(
-  (hub = inject(OrderStatusHubService)) => {
+  (hub = inject(EventsHubService)) => {
     hub.connect();
     return hub.deadLetterLogChanged$.pipe(map((entry) => DeadLetterActions.entryPushed({ entry })));
   },
