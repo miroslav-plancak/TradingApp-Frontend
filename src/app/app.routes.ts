@@ -30,5 +30,9 @@ export const routes: Routes = [
     loadChildren: () =>
       import('./features/architecture/architecture.routes').then((m) => m.ARCHITECTURE_ROUTES),
   },
+  {
+    path: 'ai-chat',
+    loadChildren: () => import('./features/ai-chat/ai-chat.routes').then((m) => m.AI_CHAT_ROUTES),
+  },
   { path: '**', redirectTo: 'orders' },
 ];

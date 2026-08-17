@@ -1,0 +1,27 @@
+<div class="ai-chat">
+  <h2>AI Chat — streaming smoke test</h2>
+  <p class="hint">
+    Sends straight to AiChatHub.Ask() over its own SignalR connection - no RAG yet, plain
+    streaming pipe only.
+  </p>
+
+  <mat-form-field appearance="outline" class="question-field">
+    <mat-label>Ask a question</mat-label>
+    <input matInput #questionInput [disabled]="streaming()" (keydown.enter)="ask(questionInput.value)" />
+  </mat-form-field>
+
+  <button
+    mat-flat-button
+    type="button"
+    [disabled]="streaming()"
+    (click)="ask(questionInput.value)"
+  >
+    {{ streaming() ? 'Streaming…' : 'Ask' }}
+  </button>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  <pre class="answer">{{ answer() || '—' }}</pre>
+</div>

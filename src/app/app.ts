@@ -44,6 +44,7 @@ export class App {
     { path: '/dead-letter', label: 'Dead Letter', icon: 'report' },
     { path: '/scenarios', label: 'Scenarios', icon: 'science' },
     { path: '/architecture', label: 'Architecture', icon: 'account_tree' },
+    { path: '/ai-chat', label: 'AI Chat', icon: 'smart_toy' },
   ];
 
   /** Committed on blur/Enter rather than per keystroke, so normalization can't fight typing. */
