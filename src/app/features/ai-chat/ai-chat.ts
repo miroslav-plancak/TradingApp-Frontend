@@ -1,20 +1,32 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription } from 'rxjs';
 
 import { AssistantHubService } from '../../core/signalr/assistant-hub.service';
+import { parseMessageSegments } from './code-highlight';
 
 /**
- * Bare-bones proof that the AiChatHub streaming pipe works end to end -
- * question in, chunks appended to `answer` as they arrive. No history, no
- * ngRx slice yet: this exists to isolate the client/server boundary before
- * building the real chat UI on top of it (task #36).
+ * RAG-grounded Q&A over AiChatHub.Ask() - question in, retrieval-augmented
+ * answer streamed back chunk by chunk over its own SignalR connection.
+ * Single-shot only for now: no conversation history/ngRx slice yet (task #37).
  */
 @Component({
   selector: 'app-ai-chat',
-  imports: [MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
+  ],
   templateUrl: './ai-chat.html',
   styleUrl: './ai-chat.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,9 +35,11 @@ export class AiChat implements OnDestroy {
   private readonly hub = inject(AssistantHubService);
   private subscription: Subscription | null = null;
 
+  protected readonly lastQuestion = signal('');
   protected readonly answer = signal('');
   protected readonly streaming = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly segments = computed(() => parseMessageSegments(this.answer()));
 
   protected ask(question: string): void {
     const trimmed = question.trim();
@@ -34,6 +48,7 @@ export class AiChat implements OnDestroy {
     }
 
     this.subscription?.unsubscribe();
+    this.lastQuestion.set(trimmed);
     this.answer.set('');
     this.error.set(null);
     this.streaming.set(true);

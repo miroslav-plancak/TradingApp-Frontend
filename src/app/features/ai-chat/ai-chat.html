@@ -1,27 +1,99 @@
-<div class="ai-chat">
-  <h2>AI Chat — streaming smoke test</h2>
-  <p class="hint">
-    Sends straight to AiChatHub.Ask() over its own SignalR connection - no RAG yet, plain
-    streaming pipe only.
-  </p>
+<header class="page-header">
+  <div>
+    <h1>AI Chat</h1>
+    <p class="subtitle">
+      Ask about the TradingApp-AWS codebase — answers are grounded in real source via retrieval-augmented
+      generation.
+    </p>
+  </div>
+</header>
 
-  <mat-form-field appearance="outline" class="question-field">
-    <mat-label>Ask a question</mat-label>
-    <input matInput #questionInput [disabled]="streaming()" (keydown.enter)="ask(questionInput.value)" />
-  </mat-form-field>
+<mat-card appearance="outlined" class="chat-card">
+  <mat-card-content class="chat-body">
+    @if (!lastQuestion()) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">smart_toy</mat-icon>
+        <p>Ask a question to get started.</p>
+        <p class="empty-hint">e.g. "How does the retry policy work for SNS publishing?"</p>
+      </div>
+    } @else {
+      <div class="message message-user">
+        <div class="message-avatar user-avatar">
+          <mat-icon>person</mat-icon>
+        </div>
+        <div class="message-bubble">{{ lastQuestion() }}</div>
+      </div>
 
-  <button
-    mat-flat-button
-    type="button"
-    [disabled]="streaming()"
-    (click)="ask(questionInput.value)"
-  >
-    {{ streaming() ? 'Streaming…' : 'Ask' }}
-  </button>
+      <div class="message message-assistant">
+        <div class="message-avatar assistant-avatar">
+          <mat-icon>smart_toy</mat-icon>
+        </div>
+        <div class="message-bubble">
+          @if (streaming() && !answer()) {
+            <div class="typing-indicator" aria-label="Thinking">
+              <span></span><span></span><span></span>
+            </div>
+          } @else {
+            <div class="answer">
+              @for (segment of segments(); track $index) {
+                @if (segment.type === 'text') {
+                  <span class="answer-text"
+                    >@for (part of segment.parts; track $index) {<span
+                        [class.md-bold]="part.bold"
+                        [class.md-code]="part.code"
+                        >{{ part.text }}</span
+                      >}</span
+                  >
+                } @else {
+                  <div class="code-block">
+                    @if (segment.lang) {
+                      <div class="code-block-lang">{{ segment.lang }}</div>
+                    }
+                    <pre><code>@for (token of segment.tokens; track $index) {<span [class]="'tok-' + token.cls">{{ token.text }}</span>}</code></pre>
+                  </div>
+                }
+              }
+              @if (streaming()) {
+                <span class="cursor"></span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
 
-  @if (error()) {
-    <p class="error">{{ error() }}</p>
-  }
+    @if (error()) {
+      <p class="error">
+        <mat-icon>error_outline</mat-icon>
+        {{ error() }}
+      </p>
+    }
+  </mat-card-content>
 
-  <pre class="answer">{{ answer() || '—' }}</pre>
-</div>
+  <div class="chat-input-row">
+    <mat-form-field appearance="outline" class="question-field">
+      <mat-label>Ask a question</mat-label>
+      <input
+        matInput
+        #questionInput
+        [disabled]="streaming()"
+        (keydown.enter)="ask(questionInput.value); questionInput.value = ''"
+      />
+    </mat-form-field>
+
+    <button
+      matIconButton
+      class="send-button"
+      type="button"
+      [disabled]="streaming()"
+      matTooltip="Send"
+      (click)="ask(questionInput.value); questionInput.value = ''"
+    >
+      @if (streaming()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        <mat-icon>send</mat-icon>
+      }
+    </button>
+  </div>
+</mat-card>

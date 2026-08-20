@@ -1,35 +1,297 @@
-.ai-chat {
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+
+  h1 {
+    font: var(--mat-sys-headline-small);
+    margin: 0;
+  }
+
+  .subtitle {
+    margin: 0.25rem 0 0;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-medium);
+    max-width: 42rem;
+  }
+}
+
+.chat-card {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.5rem;
-  max-width: 40rem;
+  max-width: 56rem;
+  min-height: 32rem;
+  max-height: calc(100vh - 14rem);
 }
 
-.hint {
-  margin: -0.5rem 0 0;
+.chat-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-block: 0.5rem;
+}
+
+.empty-state {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 3rem 1rem;
   color: var(--mat-sys-on-surface-variant);
-  font-size: 0.875rem;
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
 }
 
-.question-field {
-  width: 100%;
+.empty-icon {
+  font-size: 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  opacity: 0.5;
+  margin-bottom: 0.25rem;
+}
+
+.empty-hint {
+  font: var(--mat-sys-body-small);
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.message {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.message-avatar {
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+.user-avatar {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.assistant-avatar {
+  background: var(--mat-sys-tertiary-container, var(--mat-sys-primary-container));
+  color: var(--mat-sys-on-tertiary-container, var(--mat-sys-on-primary-container));
+}
+
+.message-bubble {
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--mat-sys-corner-large);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.message-user .message-bubble {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  border-top-left-radius: var(--mat-sys-corner-small);
+}
+
+.message-assistant .message-bubble {
+  flex: 1 1 auto;
+  background: var(--mat-sys-surface-container-highest);
+  border-top-left-radius: var(--mat-sys-corner-small);
 }
 
 .answer {
-  margin: 0;
-  padding: 0.75rem 1rem;
-  min-height: 4rem;
-  border-radius: var(--mat-sys-corner-small);
-  background: var(--mat-sys-surface-container-highest);
-  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
-  font-size: 0.875rem;
-  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.answer-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.error {
+.cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 0.1em;
+  vertical-align: text-bottom;
+  background: var(--mat-sys-on-surface-variant);
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0;
+
+  span {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--mat-sys-on-surface-variant);
+    opacity: 0.6;
+    animation: typing-bounce 1.2s ease-in-out infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+  }
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-0.2rem);
+    opacity: 1;
+  }
+}
+
+.md-bold {
+  font-weight: 700;
+}
+
+// Inline code span (single backtick), distinct from the larger fenced
+// .code-block: a small monospace chip inline with prose rather than its own
+// block. Same dark-editor colour so it reads as "code" without competing
+// with the fenced blocks for attention.
+.md-code {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.85em;
+  color: #ce9178;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+}
+
+// VS Code Dark+ palette, matching the code figures in the fis-learning docs.
+.code-block {
+  --vs-bg: #1e1e1e;
+  --vs-lang-bg: #2d2d2d;
+  --vs-lang-fg: #9cdcfe;
+  --vs-keyword: #569cd6;
+  --vs-type: #4ec9b0;
+  --vs-string: #ce9178;
+  --vs-comment: #6a9955;
+  --vs-number: #b5cea8;
+  --vs-method: #dcdcaa;
+  --vs-plain: #d4d4d4;
+
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.code-block-lang {
+  padding: 0.25rem 0.75rem;
+  background: var(--vs-lang-bg);
+  color: var(--vs-lang-fg);
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.code-block pre {
   margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--vs-bg);
+  overflow-x: auto;
+}
+
+.code-block code {
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--vs-plain);
+  white-space: pre;
+}
+
+.tok-keyword {
+  color: var(--vs-keyword);
+}
+.tok-type {
+  color: var(--vs-type);
+}
+.tok-string {
+  color: var(--vs-string);
+}
+.tok-comment {
+  color: var(--vs-comment);
+  font-style: italic;
+}
+.tok-number {
+  color: var(--vs-number);
+}
+.tok-method {
+  color: var(--vs-method);
+}
+.tok-plain {
+  color: var(--vs-plain);
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--mat-sys-error);
+  border-radius: var(--mat-sys-corner-medium);
   color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+}
+
+.chat-input-row {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1rem 1.25rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.question-field {
+  flex: 1 1 auto;
+}
+
+.send-button {
+  margin-top: 0.375rem;
+  --mat-icon-button-icon-color: var(--mat-sys-primary);
 }
